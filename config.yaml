@@ -1,0 +1,258 @@
+# tcg-restock-watch config
+# Secrets (discord_webhook, bestbuy_api_key) go in config.local.yaml, which is gitignored.
+
+# Discord: make a private server, add a #drops channel, then
+# channel settings > Integrations > Webhooks > New Webhook > Copy Webhook URL.
+# In the Discord app, set that channel's notifications to "All Messages".
+# In-stock alerts also ping @everyone so the phone buzzes even on "Mentions only".
+discord_webhook: ""
+discord_mention_everyone: true
+# Permanent invite link for the "Join on Discord" button on the status page (config.local.yaml).
+discord_invite: ""
+
+# Optional second channel: ntfy.sh topic (leave blank to skip).
+ntfy_topic: ""
+
+# Poll interval per retailer, in seconds. Jitter of +-15% is added automatically.
+# Target: one batched request for every TCIN. Best Buy without an API key loads one
+# page per product in the background browser (about 6 s each), so keep it slow;
+# with a free key from developer.bestbuy.com it becomes one request and 60 s is fine.
+intervals:
+  target: 90
+  bestbuy: 600
+  walmart: 600
+  gamestop: 180
+
+# Alert but do NOT open the page when price exceeds msrp * max_price_ratio.
+max_price_ratio: 1.10
+
+# What to do on your PC when a drop lands at an acceptable price:
+#   open  = open the product page in your normal browser (logged in, no bot signals). You click Add to cart.
+#   auto  = controlled Chrome adds it to the cart for you. Trips bot checks on Target/Walmart; opt-in.
+#   off   = alert only.
+cart: open
+
+# Best Buy official API key (free, instant): https://developer.bestbuy.com/  (put it in config.local.yaml)
+bestbuy_api_key: ""
+
+# Target uses store + zip for its fulfillment lookup. Online shipping status is
+# what triggers the alert; the store only affects pickup fields.
+zip_code: "95035"
+target_store_id: "626"
+
+# Where state, log, and the background Chrome profile live.
+data_dir: "~/.tcg-watch"
+
+# Unused as of 2026-09-07: alerts now fire only on a genuine restock (out of stock -> in stock),
+# never as a "still in stock" reminder on a timer. That re-alert loop pinged @everyone every
+# realert_minutes forever for a product that never actually sold out. Kept here in case a
+# scoped, per-product version of this is worth reintroducing later.
+realert_minutes: 30
+
+# Retire a product (hide it, stop polling it) when no retailer has had it in stock for
+# this many days since it was first seen, or when every retailer has delisted it for
+# retire_missing_days. Retired products sit in a collapsed section at the bottom of the page.
+retire_after_days: 60
+retire_missing_days: 7
+
+# TCGplayer market price, for the "MSRP vs market" comparison on the status page.
+# One product is looked up every market_interval seconds and kept for a day, so the
+# list fills in over the first hour and then refreshes as a slow trickle.
+market: true
+market_interval: 45
+
+# Rebuild and redeploy the status page (npx vercel) when stock or prices change,
+# at most once per 5 minutes. Needs `npx vercel login` done once on this PC.
+site_deploy: true
+
+# Reddit deal feeds: free, fast signal for stores that block bots (Pokemon Center,
+# Costco, Sam's Club, Amazon). Any new post whose title contains a keyword alerts
+# your phone with the post's link. Checked every feed_interval seconds.
+feed_interval: 120
+feeds:
+  - subreddit: PokemonTCGDeals
+    keywords: ["pokemon center", "pokémon center", "restock", "in stock", "target", "best buy", "walmart", "costco", "sam's club", "amazon"]
+    exclude: ["ebay", "tcgplayer", "wts", "[w]", "whatnot"]
+  - subreddit: OnePieceTCG
+    keywords: ["restock", "in stock", "preorder", "pre-order", "best buy", "target", "walmart"]
+    exclude: ["wts", "wtb", "trade", "[w]"]
+
+# Products sold by the retailer itself (marketplace listings are ignored at poll time).
+# Discovered 2026-09-06. Sold-out items disappear from retailer search, so this list
+# was built from known IDs plus what was listed that day. Add more with:
+#   python watch.py --lookup target <tcin>        python watch.py --discover "pokemon booster bundle"
+#   target        TCIN, the number after "A-" in the URL
+#   bestbuy       SKU, the number after "/sku/" or "skuId=" in the URL (or give the full url)
+#   walmart       item ID, the number at the end of the /ip/... URL
+#   pokemoncenter NOT pollable (Imperva blocks automated browsers); covered by the feeds above
+products:
+  # ---- Target: Pokemon (Target does not sell One Piece itself, only marketplace) ----
+  - {retailer: target, id: "93954446", name: "Pokemon Prismatic Evolutions Booster Bundle", msrp: 31.99}
+  - {retailer: target, id: "95298172", name: "Pokemon Mega Evolution Chaos Rising Booster Bundle", msrp: 31.99}
+  - {retailer: target, id: "95120834", name: "Pokemon Mega Evolution Ascended Heroes Booster Bundle", msrp: 31.99}
+  - {retailer: target, id: "88275197", name: "Pokemon Scarlet & Violet Booster Bundle", msrp: 26.99}
+  - {retailer: target, id: "1010892076", name: "Pokemon 30th Celebration Elite Trainer Box", msrp: 69.99}
+  - {retailer: target, id: "1010892068", name: "Pokemon 30th Celebration Sylveon ex Box", msrp: 29.99}
+  - {retailer: target, id: "1010892065", name: "Pokemon 30th Celebration Greninja ex Box", msrp: 29.99}
+  - {retailer: target, id: "1010892069", name: "Pokemon 30th Celebration Tin", msrp: 29.99}
+  - {retailer: target, id: "1010892067", name: "Pokemon 30th Celebration Poster Collection", msrp: 19.99}
+  - {retailer: target, id: "1010892070", name: "Pokemon 30th Celebration Knock Out Collection", msrp: 11.99}
+  - {retailer: target, id: "1010892078", name: "Pokemon 30th Celebration Tech Sticker Collection", msrp: 19.99}
+
+  # ---- Best Buy: Pokemon (full product URLs; the old skuId= form errors on newer SKUs) ----
+  - {retailer: bestbuy, id: "12692374", name: "Pokemon Mega Evolution Chaos Rising Elite Trainer Box", msrp: 54.99,
+     url: "https://www.bestbuy.com/product/pokemon-trading-card-game-mega-evolution-chaos-rising-elite-trainer-box/JJG2TL34RT"}
+  - {retailer: bestbuy, id: "12708764", name: "Pokemon Mega Evolution Ascended Heroes Elite Trainer Box", msrp: 54.99,
+     url: "https://www.bestbuy.com/product/pokemon-trading-card-game-mega-evolution-ascended-heroes-elite-trainer-box/JJG2TLXSFV"}
+  - {retailer: bestbuy, id: "JJG2TL3W86", name: "Pokemon Mega Evolution Perfect Order Elite Trainer Box", msrp: 54.99,
+     url: "https://www.bestbuy.com/product/pokemon-trading-card-game-mega-evolution-perfect-order-elite-trainer-box/JJG2TL3W86"}
+  - {retailer: bestbuy, id: "11471930", name: "Pokemon Destined Rivals Elite Trainer Box", msrp: 49.99,
+     url: "https://www.bestbuy.com/product/pokemon-trading-card-game-scarlet-violet-destined-rivals-elite-trainer-box/JJG2TL22PF"}
+  - {retailer: bestbuy, id: "11883948", name: "Pokemon Surging Sparks Elite Trainer Box", msrp: 49.99,
+     url: "https://www.bestbuy.com/product/pokemon-trading-card-game-scarlet-violet-surging-sparks-elite-trainer-box/J3YSYH8G3V"}
+  - {retailer: bestbuy, id: "JJG2TLCW3L", name: "Pokemon Prismatic Evolutions Elite Trainer Box", msrp: 49.99,
+     url: "https://www.bestbuy.com/product/pokemon-trading-card-game-scarlet-violet-prismatic-evolutions-elite-trainer-box/JJG2TLCW3L"}
+  - {retailer: bestbuy, id: "JJG2TL23CW", name: "Pokemon Prismatic Evolutions Super-Premium Collection", msrp: 119.99,
+     url: "https://www.bestbuy.com/product/pokemon-trading-card-game-scarlet-violet-prismatic-evolutions-super-premium-collection/JJG2TL23CW"}
+  - {retailer: bestbuy, id: "12596291", name: "Pokemon Prismatic Evolutions Booster Bundle", msrp: 31.99,
+     url: "https://www.bestbuy.com/product/pokemon-trading-card-game-scarlet-violet-prismatic-evolutions-booster-bundle/JJG2TL23JK"}
+  - {retailer: bestbuy, id: "12719219", name: "Pokemon Mega Evolution Chaos Rising Booster Bundle", msrp: 31.99,
+     url: "https://www.bestbuy.com/product/pokemon-trading-card-game-mega-evolution-chaos-rising-booster-bundle/JJG2TL34H9"}
+  - {retailer: bestbuy, id: "12601018", name: "Pokemon Mega Evolution Ascended Heroes Booster Bundle", msrp: 31.99,
+     url: "https://www.bestbuy.com/product/pokemon-trading-card-game-mega-evolution-ascended-heroes-booster-bundle/JJG2TL3JP8"}
+  - {retailer: bestbuy, id: "12590335", name: "Pokemon Mega Evolution Perfect Order Booster Bundle", msrp: 31.99,
+     url: "https://www.bestbuy.com/product/pokemon-trading-card-game-mega-evolution-perfect-order-booster-bundle/JJG2TL3QK2"}
+  - {retailer: bestbuy, id: "13012819", name: "Pokemon Mega Evolution Pitch Black Booster Bundle", msrp: 31.99,
+     url: "https://www.bestbuy.com/product/pokemon-trading-card-game-mega-evolution-pitch-black-booster-bundle/JJG2TL8JVY"}
+  - {retailer: bestbuy, id: "10983414", name: "Pokemon Mega Evolution Booster Bundle", msrp: 31.99,
+     url: "https://www.bestbuy.com/product/pokemon-trading-card-game-mega-evolution-booster-bundle/JJG2TL2Y4Z"}
+  - {retailer: bestbuy, id: "13026028", name: "Pokemon Mega Evolution Ascended Heroes Tin", msrp: 29.99,
+     url: "https://www.bestbuy.com/product/pokemon-trading-card-game-mega-evolution-ascended-heroes-tin-1-tin-per-order-styles-may-vary/JJG2TL3QT3"}
+  - {retailer: bestbuy, id: "12722803", name: "Pokemon Mega Moonlit Tin Mega Gengar ex", msrp: 29.99,
+     url: "https://www.bestbuy.com/product/pokemon-pokemon-tcg-mega-moonlit-tin-mega-gengar-ex/JJG2TL3VPS"}
+  - {retailer: bestbuy, id: "12807847", name: "Pokemon Mega Greninja ex Premium Collection", msrp: 49.99,
+     url: "https://www.bestbuy.com/product/pokemon-trading-card-game-mega-greninja-ex-premium-collection/JJG2TL3VSF"}
+  - {retailer: bestbuy, id: "11253811", name: "Pokemon Mega Charizard X ex Ultra-Premium Collection", msrp: 119.99,
+     url: "https://www.bestbuy.com/product/pokemon-trading-card-game-mega-charizard-x-ex-ultra-premium-collection/JJG2TLXYCP"}
+  - {retailer: bestbuy, id: "12547983", name: "Pokemon Collector Chest Fall 2025", msrp: 29.99,
+     url: "https://www.bestbuy.com/product/pokemon-trading-card-game-collector-chest-fall-2025/JJG2TLXQ8R"}
+  - {retailer: bestbuy, id: "12826323", name: "Pokemon Sea & Sky Premium Collection Crown Zenith", msrp: 49.99,
+     url: "https://www.bestbuy.com/product/pokemon-trading-card-game-sea-sky-premium-collection-crown-zenith-crz/J3YSYQJSTW"}
+  - {retailer: bestbuy, id: "12346230", name: "Pokemon First Partner Illustration Collection Series 1",
+     url: "https://www.bestbuy.com/product/pokemon-trading-card-game-first-partner-illustration-collection-series-1/JJG2TL3QZ5"}
+  - {retailer: bestbuy, id: "12930083", name: "Pokemon First Partner Illustration Collection Series 3",
+     url: "https://www.bestbuy.com/product/pokemon-trading-card-game-first-partner-illustration-collection-series-3/JJG2TL8J6T"}
+  - {retailer: bestbuy, id: "12772938", name: "Pokemon Mega Lucario ex League Battle Deck", msrp: 29.99,
+     url: "https://www.bestbuy.com/product/pokemon-trading-card-game-mega-lucario-ex-league-battle-deck/JJG2TLXH2X"}
+  - {retailer: bestbuy, id: "11645495", name: "Pokemon Team Rocket's Mewtwo ex League Battle Deck", msrp: 29.99,
+     url: "https://www.bestbuy.com/product/pokemon-trading-card-game-team-rockets-mewtwo-ex-league-battle-deck/JJG2TL2Q3F"}
+  - {retailer: bestbuy, id: "13012809", name: "Pokemon Mega Evolution Pitch Black Sleeved Booster", msrp: 4.49,
+     url: "https://www.bestbuy.com/product/pokemon-mega-evolution-pitch-black-sleeved-booster-1-sleeved-booster-per-order-styles-may-vary/JJG2TL32P8"}
+  - {retailer: bestbuy, id: "12692364", name: "Pokemon Destined Rivals Sleeved Booster", msrp: 4.49,
+     url: "https://www.bestbuy.com/product/pokemon-trading-card-game-scarlet-violet-destined-rivals-sleeved-booster-1-sleeved-booster-per-order-styles-may-vary/JJG2TL2CVL"}
+
+  # ---- Best Buy: One Piece (English) ----
+  - {retailer: bestbuy, id: "12940921", name: "One Piece ST-31 Monkey.D.Luffy Starter Deck", msrp: 11.99,
+     url: "https://www.bestbuy.com/product/bandai-one-piece-card-game-starter-deck-31-red-monkey-d-luffy-st-31/J3GWRPWJ92"}
+  - {retailer: bestbuy, id: "12971538", name: "One Piece ST-32 Roronoa Zoro Starter Deck", msrp: 11.99,
+     url: "https://www.bestbuy.com/product/bandai-one-piece-card-game-card-game-starter-deck-st-32-roronoa-zoro-green-deck/J3GWRPWJ6Y"}
+  - {retailer: bestbuy, id: "12599163", name: "One Piece EB-03 Heroines Edition Booster Pack", msrp: 5.99,
+     url: "https://www.bestbuy.com/product/bandai-one-piece-card-game-tcg-heroines-edition-12-card-booster-pack-english-edition-extra-booster-eb-03/J3GWP8QQXR"}
+  - {retailer: bestbuy, id: "12971540", name: "One Piece Illustration Box Vol. 7 (IB-07)",
+     url: "https://www.bestbuy.com/product/bandai-one-piece-card-game-illustration-box-vol-7-ib-07-4-packs-promos/J3GWRPW24P"}
+  - {retailer: bestbuy, id: "12971556", name: "One Piece Illustration Box Vol. 8 (IB-08)",
+     url: "https://www.bestbuy.com/product/bandai-one-piece-card-game-illustration-box-vol-8-ib-08-4-packs-promos/J3GWRPW25H"}
+
+  # ---- Walmart: Pokemon (sold by Walmart.com; found via search facet retailer_type:Walmart) ----
+  - {retailer: walmart, id: "17328862239", name: "Pokemon Mega Evolution Elite Trainer Box", msrp: 54.99}
+  - {retailer: walmart, id: "5558569421", name: "Pokemon Twilight Masquerade Elite Trainer Box", msrp: 49.99}
+  - {retailer: walmart, id: "5977297380", name: "Pokemon Shrouded Fable Elite Trainer Box", msrp: 49.99}
+  - {retailer: walmart, id: "3280189864", name: "Pokemon Obsidian Flames Elite Trainer Box", msrp: 49.99}
+  - {retailer: walmart, id: "16019713971", name: "Pokemon Destined Rivals Booster (bundle or box, verify)"}
+  - {retailer: walmart, id: "10692754252", name: "Pokemon Surging Sparks Booster (bundle or box, verify)"}
+  - {retailer: walmart, id: "1035833722", name: "Pokemon Paldea Evolved Booster Bundle", msrp: 26.99}
+  - {retailer: walmart, id: "8177053453", name: "Pokemon Charizard ex Super-Premium Collection", msrp: 119.99}
+  - {retailer: walmart, id: "15382923523", name: "Pokemon Iono's Bellibolt ex Premium Collection", msrp: 39.99}
+  - {retailer: walmart, id: "14764973846", name: "Pokemon Prismatic Evolutions 2-Pack Blister", msrp: 9.99}
+  - {retailer: walmart, id: "15127073643", name: "Pokemon Journey Together Blister"}
+  - {retailer: walmart, id: "5265483766", name: "Pokemon Paldea Adventure Chest", msrp: 29.99}
+  - {retailer: walmart, id: "20895014480", name: "Pokemon Quaquaval ex / Meowscarada ex Deluxe Battle Deck", msrp: 39.97, tcgplayer: 504257}  # 2-deck set; Walmart's own list price
+
+  # ---- GameStop: Pokemon (item ID = number before .html in the product URL; no marketplace on these pages) ----
+  - {retailer: gamestop, id: "20036324", name: "Pokemon 30th Celebration Elite Trainer Box", msrp: 69.99}
+  - {retailer: gamestop, id: "20033749", name: "Pokemon Mega Evolution Chaos Rising Elite Trainer Box", msrp: 54.99}
+  - {retailer: gamestop, id: "20034819", name: "Pokemon Mega Evolution Pitch Black Elite Trainer Box", msrp: 54.99}
+  - {retailer: gamestop, id: "20027391", name: "Pokemon Mega Evolution Phantasmal Flames Elite Trainer Box", msrp: 54.99}
+  - {retailer: gamestop, id: "20030564", name: "Pokemon Mega Evolution Ascended Heroes Elite Trainer Box", msrp: 54.99}
+  - {retailer: gamestop, id: "20031957", name: "Pokemon Mega Evolution Perfect Order Elite Trainer Box", msrp: 54.99}
+  - {retailer: gamestop, id: "20023792", name: "Pokemon Mega Evolution Elite Trainer Box", msrp: 54.99}
+  - {retailer: gamestop, id: "20018505", name: "Pokemon Prismatic Evolutions Elite Trainer Box", msrp: 49.99}
+
+  # ---- Walmart: One Piece (sold by Walmart.com) ----
+  - {retailer: walmart, id: "15840957168", name: "One Piece ST-23 Red Shanks Starter Deck", msrp: 11.99}
+  - {retailer: walmart, id: "15792974477", name: "One Piece ST-24 Green Jewelry Bonney Starter Deck", msrp: 11.99}
+  - {retailer: walmart, id: "15804221609", name: "One Piece ST-25 Blue Buggy Starter Deck", msrp: 11.99}
+  - {retailer: walmart, id: "15826912810", name: "One Piece ST-26 Purple/Black Luffy Starter Deck", msrp: 11.99}
+  - {retailer: walmart, id: "15804171569", name: "One Piece ST-27 Black Marshall.D.Teach Starter Deck", msrp: 11.99}
+  - {retailer: walmart, id: "15827713804", name: "One Piece ST-28 Green/Yellow Yamato Starter Deck", msrp: 11.99}
+  - {retailer: walmart, id: "18980153584", name: "One Piece ST-29 Egghead Starter Deck", msrp: 11.99}
+  - {retailer: walmart, id: "16810169805", name: "One Piece Ace and Newgate Starter Deck", msrp: 11.99}
+  - {retailer: walmart, id: "5226743076", name: "One Piece Zoro and Sanji Starter Deck", msrp: 11.99}
+  - {retailer: walmart, id: "16891105069", name: "One Piece Deck Set 01", msrp: 24.99}
+  - {retailer: walmart, id: "5416414793", name: "One Piece Three Brothers Ultra Deck", msrp: 24.99}
+  - {retailer: walmart, id: "16614718210", name: "One Piece Illustration Box 03"}
+  - {retailer: walmart, id: "16576001078", name: "One Piece Illustration Box 04"}
+  - {retailer: walmart, id: "16417069740", name: "One Piece Double Pack 7 - A Fist of Divine Speed", msrp: 24.99}
+  - {retailer: walmart, id: "2412514952", name: "One Piece Gift Box (5 boosters)", msrp: 29.99}
+
+  # ---- Riftbound (League of Legends TCG). MSRP: booster display (box, 24 x $5) $120, champion deck $19.99,
+  #      Proving Grounds $29.99. Vault Bundle MSRP unknown. TCGplayer calls the box a "Booster Display";
+  #      keep that word in the name so the market lookup matches. IDs researched 2026-09-07. ----
+  - {retailer: target, id: "1008812475", name: "Riftbound Unleashed Booster Display", msrp: 120}
+  - {retailer: walmart, id: "18864622941", name: "Riftbound Unleashed Booster Display", msrp: 120}
+  - {retailer: target, id: "1008679265", name: "Riftbound Spiritforged Booster Display", msrp: 120}
+  - {retailer: walmart, id: "16140502021", name: "Riftbound Origins Booster Display", msrp: 120}
+  - {retailer: target, id: "1011726395", name: "Riftbound Vendetta Vault Bundle"}
+  - {retailer: gamestop, id: "20035471", name: "Riftbound Vendetta Vault Bundle"}
+  - {retailer: target, id: "1009864484", name: "Riftbound Unleashed Vault Bundle"}
+  - {retailer: bestbuy, id: "12660800", name: "Riftbound Unleashed Vault Bundle"}
+  - {retailer: walmart, id: "19686652780", name: "Riftbound Unleashed Vault Bundle"}
+  - {retailer: gamestop, id: "20035427", name: "Riftbound Unleashed Vault Bundle"}
+  - {retailer: gamestop, id: "20035470", name: "Riftbound Vendetta Zed vs Shen Champion Deck Showdown", msrp: 39.98}
+  - {retailer: target, id: "95275676", name: "Riftbound Unleashed Champion Deck Vi", msrp: 19.99}
+  - {retailer: bestbuy, id: "12660799", name: "Riftbound Unleashed Champion Deck Vi", msrp: 19.99}
+  - {retailer: gamestop, id: "20035428", name: "Riftbound Unleashed Champion Deck Vi", msrp: 19.99}
+  - {retailer: target, id: "95275674", name: "Riftbound Unleashed Champion Deck Vex", msrp: 19.99}
+  - {retailer: gamestop, id: "20032531", name: "Riftbound Spiritforged Champion Deck Fiora", msrp: 19.99}
+  - {retailer: walmart, id: "18631406039", name: "Riftbound Spiritforged Champion Deck Rumble", msrp: 19.99}
+  - {retailer: target, id: "94960060", name: "Riftbound Origins Champion Deck Lee Sin", msrp: 19.99}
+  - {retailer: target, id: "94960053", name: "Riftbound Origins Champion Deck Viktor", msrp: 19.99}
+  - {retailer: walmart, id: "18130112491", name: "Riftbound Origins Champion Deck Jinx", msrp: 19.99}
+  - {retailer: bestbuy, id: "6671623", name: "Riftbound Proving Grounds Starter Set", msrp: 29.99}
+  - {retailer: walmart, id: "16130612416", name: "Riftbound Proving Grounds Starter Set", msrp: 29.99}
+  - {retailer: gamestop, id: "20035469", name: "Riftbound Vendetta Sleeved Booster Pack", msrp: 5}
+  - {retailer: gamestop, id: "20035425", name: "Riftbound Unleashed Sleeved Booster Pack", msrp: 5}
+  - {retailer: gamestop, id: "20032530", name: "Riftbound Spiritforged Sleeved Booster Pack", msrp: 5}
+  - {retailer: walmart, id: "19572551769", name: "Riftbound Spiritforged Sleeved Booster Pack", msrp: 5}
+  - {retailer: gamestop, id: "20022648", name: "Riftbound Origins Sleeved Booster Pack", msrp: 5}
+
+# Upcoming releases for the "Coming up" section. Hand-maintained; add a set the day it is announced.
+# Entries stay 14 days past their date as "out now", then drop off. Researched 2026-09-07.
+releases:
+  - {game: "Pokemon", name: "30th Celebration", date: "2026-09-16", note: "ETB, ex boxes, collections, blisters. Worldwide launch; Pokemon Center preorders opened Jul 15", source: "https://www.pokemon.com/us/news/check-out-every-pokemon-tcg-product-release-in-september-2026"}
+  - {game: "One Piece", name: "Set Sail Deck Set (SD-01)", date: "2026-09-18", note: "$24.99, two decks plus an OP-17 pack", source: "https://en.onepiece-cardgame.com/products/sd01.html"}
+  - {game: "One Piece", name: "Heroines Special Set", date: "2026-09-30", note: "Premium Bandai exclusive; day is an estimate", source: "https://en.onepiece-cardgame.com/products/heroines-special.html"}
+  - {game: "Pokemon", name: "30th Celebration Booster Bundle + Mini Tins", date: "2026-10-02", note: "6-pack bundle, 10 tin designs", source: "https://rarecandy.com/blog/pokemon-tcg-30th-celebration-release-calendar"}
+  - {game: "Pokemon", name: "30th Celebration Battle Decks (Espeon ex / Umbreon ex)", date: "2026-10-30", note: "60-card all-foil decks", source: "https://rarecandy.com/blog/pokemon-tcg-30th-celebration-release-calendar"}
+  - {game: "One Piece", name: "Heroines Edition vol.2 (EB-05)", date: "2026-10-30", note: "$4.99 packs; day is retailer-reported", source: "https://en.onepiece-cardgame.com/products/eb05.html"}
+  - {game: "Pokemon", name: "Mega Evolution: Delta Reign", date: "2026-11-06", note: "Booster box, ETB, bundle, Build & Battle. Prerelease Oct 24 to Nov 1; Pokemon Center preorders expected late Sep", source: "https://www.pokemon.com/us/news/the-pokemon-tcg-mega-evolution-delta-reign-expansion-arrives-november-6-2026"}
+  - {game: "Pokemon", name: "30th Celebration Ultra-Premium Collections (Day / Night)", date: "2026-11-06", note: "$179.99 UPCs plus Ditto Premium Collection and Mew/Mewtwo Figure Collection", source: "https://www.pokemon.com/us/pokemon-tcg/product-gallery/30th-celebration-ultra-premium-collections-day-night"}
+  - {game: "One Piece", name: "OP-18 The Dominance of God", date: "2026-11-20", note: "Bandai confirmed November; Nov 20 is a retailer estimate", source: "https://soleback.com/en/articles/one-piece-op-18-dominance-of-god-1"}
+  - {game: "One Piece", name: "Premium Card Collection Live Action vol.2", date: "2026-11-27", note: "Premium Bandai exclusive, $20 each; day estimated", source: "https://en.onepiece-cardgame.com/products/collection-drama002.html"}
+  - {game: "Pokemon", name: "30th Celebration Binder Collection + ex Tins", date: "2026-12-04", note: "Sylveon ex and Greninja ex tins", source: "https://rarecandy.com/blog/pokemon-tcg-30th-celebration-release-calendar"}
+  - {game: "One Piece", name: "OP-19", date: "2027-03-05", note: "Rumored; prereleases Feb 26 to Mar 4", source: "https://www.universetcg.com/blogs/news/one-piece-card-game-op-19-pre-order-open-now-release-5-march-2027"}
+  - {game: "Riftbound", name: "Radiance (RAD)", date: "2026-10-23", note: "Booster box, Seraphine vs Evelynn Showdown decks, Vault Bundle. Previews Sep 25 to Oct 9, Pre-Rift Oct 16 to 22. Mass-retail preorders not live yet", source: "https://playriftbound.com/en-us/news/announcements/products-and-sets-into-2027/"}
+  - {game: "Riftbound", name: "Gift of the Rift Bundle", date: "2026-12-04", note: "16 packs across sets 1 to 5, foil runes, promo", source: "https://playriftbound.com/en-us/news/announcements/products-and-sets-into-2027/"}
+  - {game: "Riftbound", name: "Legacy (LGC)", date: "2027-01-29", note: "Booster box, 4 champion decks (Tryndamere, Ashe, Lux, Garen), Vault Bundle. Pre-Rift Jan 22 to 28", source: "https://playriftbound.com/en-us/news/announcements/products-and-sets-into-2027/"}
+  - {game: "Riftbound", name: "Proving Grounds 2nd Edition", date: "2027-02-19", note: "4 decks with battlefields and playmats, $40", source: "https://playriftbound.com/en-us/news/announcements/august-2026-roadmap/"}
+  - {game: "Riftbound", name: "The Reckoning (REC)", date: "2027-04-30", note: "Booster box, Shyvana and Vayne champion decks, Vault Bundle. Pre-Rift Apr 23 to 29", source: "https://playriftbound.com/en-us/news/announcements/products-and-sets-into-2027/"}

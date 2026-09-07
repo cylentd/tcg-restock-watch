@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+config.local.yaml
+site/.vercel/
+site/index.html
+site/img/
