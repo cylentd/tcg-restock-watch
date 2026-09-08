@@ -23,6 +23,9 @@ PRODUCT_URLS = {
     "walmart": "https://www.walmart.com/ip/{id}",
     "gamestop": "https://www.gamestop.com/products/{id}.html",  # 301s to the full product URL
     "pokemoncenter": "https://www.pokemoncenter.com/product/{id}",
+    # Sam's Club canonical URLs carry a slug (/ip/<slug>/<itemId>); the slugless form
+    # redirects to it, so config only needs the trailing item id.
+    "samsclub": "https://www.samsclub.com/ip/-/{id}",
     "riotmerch": "https://merch.riotgames.com/en-us/product/{id}/",  # {id} is the URL slug
     # Price-only stub (no product page of its own to check); config should give an explicit
     # `url` per product (e.g. a TCGplayer search link) since {id} here is just an internal key.
@@ -35,12 +38,13 @@ CART_URLS = {
     "walmart": "https://www.walmart.com/cart",
     "gamestop": "https://www.gamestop.com/cart",
     "pokemoncenter": "https://www.pokemoncenter.com/cart",
+    "samsclub": "https://www.samsclub.com/cart",
     "riotmerch": "https://merch.riotgames.com/en-us/cart",
 }
 
 # Target's redsky API is called from the browser too: it sits behind Target's bot challenge,
 # which a cookieless client from a noticed IP fails on most requests (2026-09-07).
-USES_BROWSER = {"target", "walmart", "pokemoncenter"}
+USES_BROWSER = {"target", "walmart", "pokemoncenter", "samsclub"}
 
 
 def product_url(p: Product) -> str:
@@ -48,7 +52,8 @@ def product_url(p: Product) -> str:
 
 
 def get_checker(retailer: str):
-    from . import bestbuy, gamestop, pokemoncenter, riotmerch, target, tcgplayer_price, walmart
+    from . import (bestbuy, gamestop, pokemoncenter, riotmerch, samsclub, target,
+                   tcgplayer_price, walmart)
 
     return {
         "target": target.check,
@@ -56,6 +61,7 @@ def get_checker(retailer: str):
         "walmart": walmart.check,
         "gamestop": gamestop.check,
         "pokemoncenter": pokemoncenter.check,
+        "samsclub": samsclub.check,
         "riotmerch": riotmerch.check,
         "tcgplayer": tcgplayer_price.check,
     }[retailer]

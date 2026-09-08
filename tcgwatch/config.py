@@ -8,7 +8,8 @@ from pathlib import Path
 
 import yaml
 
-DEFAULT_INTERVALS = {"target": 90, "bestbuy": 60, "walmart": 300, "gamestop": 120, "pokemoncenter": 300}
+DEFAULT_INTERVALS = {"target": 90, "bestbuy": 60, "walmart": 300, "gamestop": 120,
+                     "pokemoncenter": 300, "samsclub": 300}
 
 
 @dataclass
@@ -55,6 +56,13 @@ class Config:
     market: bool = True
     market_interval: int = 20
     site_deploy: bool = False
+    # Vercel Hobby allows 100 deployments a day and 1 at a time (verified 2026-09-08), so
+    # the budget -- not the interval -- is what keeps a churny day from bricking the site.
+    # An interval alone cannot: 10-minute spacing sustained all day is 144 deploys.
+    site_min_interval: int = 1800    # normal floor between deploys
+    site_hot_interval: int = 600     # floor while any watched product is in stock
+    site_max_age: int = 1800         # deploy even with nothing changed, to prove liveness
+    site_daily_budget: int = 80      # hard stop, leaving headroom under Vercel's 100
     retire_after_days: int = 60
     retire_missing_days: int = 7
     discord_invite: str | None = None
@@ -153,6 +161,10 @@ def load(path: str | Path) -> Config:
         market=bool(raw.get("market", True)),
         market_interval=max(5, int(raw.get("market_interval", 20))),
         site_deploy=bool(raw.get("site_deploy", False)),
+        site_min_interval=max(300, int(raw.get("site_min_interval", 1800))),
+        site_hot_interval=max(300, int(raw.get("site_hot_interval", 600))),
+        site_max_age=max(600, int(raw.get("site_max_age", 1800))),
+        site_daily_budget=max(1, min(95, int(raw.get("site_daily_budget", 80)))),
         retire_after_days=int(raw.get("retire_after_days", 60)),
         retire_missing_days=int(raw.get("retire_missing_days", 7)),
         discord_invite=(str(raw["discord_invite"]).strip() or None) if raw.get("discord_invite") else None,

@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 
 from ..config import Config, Product
-from . import Result, product_url
+from . import Result, jsonld, product_url
 
 log = logging.getLogger("tcgwatch.pokemoncenter")
 
@@ -38,6 +38,11 @@ def check(products: list[Product], cfg: Config, browser=None) -> list[Result]:
             if any(m in text or m in cur_url for m in QUEUE_MARKERS):
                 # A queue means a drop is live. Treat as in stock so the alert fires.
                 results.append(Result(p, True, None, url, "queue active"))
+                continue
+
+            offer = jsonld.read(browser)
+            if offer.found:
+                results.append(Result(p, offer.in_stock, offer.price, url, offer.note, offer.image))
                 continue
 
             price = None

@@ -37,6 +37,12 @@ class Watcher:
         self.market_paused_until = 0.0
         self.site_dirty = False
         self.site_deployed_at = 0.0
+        # Deploy budget is per local date and lives in memory: a restart forgets what was
+        # already spent today, so the real ceiling is (budget x restarts). Restarts are
+        # rare and the budget leaves 20 deploys of headroom under Vercel's 100.
+        self.site_deploy_day = ""
+        self.site_deploys_today = 0
+        self.site_budget_warned = False
 
     # -- browser -------------------------------------------------------------------------
     def needs_browser(self) -> bool:
@@ -190,17 +196,57 @@ class Watcher:
         self.site_dirty = True
 
     # -- status page ----------------------------------------------------------------------
+    def _site_hot(self) -> bool:
+        """Something is in stock right now, so the dashboard is worth refreshing sooner."""
+        return any(self.state.get(p.key).get("in_stock") for p in self.cfg.products)
+
+    def _site_budget_left(self) -> int:
+        """Deploys still allowed today. Resets on the local date, not a rolling window."""
+        today = time.strftime("%Y-%m-%d")
+        if self.site_deploy_day != today:
+            self.site_deploy_day = today
+            self.site_deploys_today = 0
+        return self.cfg.site_daily_budget - self.site_deploys_today
+
     def maybe_deploy_site(self) -> None:
-        if not (self.cfg.site_deploy and self.site_dirty) or time.time() - self.site_deployed_at < 300:
+        # Vercel Hobby allows 100 deploys a day. An interval alone cannot bound a churny
+        # day -- 10-minute spacing sustained is 144 -- so the daily budget is the real
+        # guard and the intervals just decide how the budget gets spent. Nothing here is
+        # on the alerting path: Discord and ntfy fire on the stock flip itself, so a
+        # stale dashboard costs nothing while a blown quota costs the whole day.
+        if not self.cfg.site_deploy:
             return
+        elapsed = time.time() - self.site_deployed_at
+        floor = self.cfg.site_hot_interval if self._site_hot() else self.cfg.site_min_interval
+        if elapsed < floor:
+            return
+        if not self.site_dirty and elapsed < self.cfg.site_max_age:
+            return
+        if self._site_budget_left() <= 0:
+            if not self.site_budget_warned:
+                self.site_budget_warned = True
+                log.warning("site deploy budget spent for today (%d); page will go stale until midnight",
+                            self.cfg.site_daily_budget)
+            return
+        self.site_budget_warned = False
+
         from . import site as site_mod
 
         root = Path(__file__).resolve().parent.parent
         try:
             site_mod.build(self.cfg, root / "site")
-            subprocess.Popen(f'npx -y vercel --prod --yes --cwd "{root / "site"}"', shell=True,
-                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            log.info("status page rebuilt and deploy started")
+            # Popen stays fire-and-forget so a slow deploy cannot stall the poll loop, but
+            # the output goes to a file rather than DEVNULL: with it discarded, an expired
+            # Vercel token froze the page silently and still cleared site_dirty.
+            with open(self.cfg.data_dir / "vercel.log", "a", encoding="utf-8") as fh:
+                fh.write(f"\n===== {time.strftime('%Y-%m-%d %H:%M:%S')} deploy =====\n")
+                fh.flush()
+                subprocess.Popen(f'npx -y vercel --prod --yes --cwd "{root / "site"}"', shell=True,
+                                 stdout=fh, stderr=subprocess.STDOUT)
+            self.site_deploys_today += 1
+            log.info("status page rebuilt and deploy started (%d/%d today, %s)",
+                     self.site_deploys_today, self.cfg.site_daily_budget,
+                     "hot" if self._site_hot() else "normal")
         except Exception as e:  # noqa: BLE001
             log.warning("site deploy failed: %s", e)
         self.site_dirty = False
