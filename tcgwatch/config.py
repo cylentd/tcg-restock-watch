@@ -53,12 +53,17 @@ class Config:
     feeds: list[Feed] = field(default_factory=list)
     feed_interval: int = 120
     market: bool = True
-    market_interval: int = 45
+    market_interval: int = 20
     site_deploy: bool = False
     retire_after_days: int = 60
     retire_missing_days: int = 7
     discord_invite: str | None = None
     releases: list[dict] = field(default_factory=list)  # upcoming sets: {game, name, date, note, source}
+    # Reddit OAuth app (config.local.yaml). Without it the feeds fall back to the public RSS,
+    # which Reddit throttles to almost nothing from a non-browser client.
+    reddit_client_id: str | None = None
+    reddit_client_secret: str | None = None
+    reddit_user_agent: str = "windows:tcg-restock-watch:1.0 (personal restock watcher)"
 
     def products_for(self, retailer: str) -> list[Product]:
         return [p for p in self.products if p.retailer == retailer]
@@ -146,10 +151,13 @@ def load(path: str | Path) -> Config:
         feeds=feeds,
         feed_interval=int(raw.get("feed_interval", 120)),
         market=bool(raw.get("market", True)),
-        market_interval=max(30, int(raw.get("market_interval", 45))),
+        market_interval=max(5, int(raw.get("market_interval", 20))),
         site_deploy=bool(raw.get("site_deploy", False)),
         retire_after_days=int(raw.get("retire_after_days", 60)),
         retire_missing_days=int(raw.get("retire_missing_days", 7)),
         discord_invite=(str(raw["discord_invite"]).strip() or None) if raw.get("discord_invite") else None,
         releases=[dict(r) for r in (raw.get("releases") or []) if isinstance(r, dict)],
+        reddit_client_id=(str(raw.get("reddit_client_id") or os.environ.get("REDDIT_CLIENT_ID") or "").strip() or None),
+        reddit_client_secret=(str(raw.get("reddit_client_secret") or os.environ.get("REDDIT_CLIENT_SECRET") or "").strip() or None),
+        reddit_user_agent=str(raw.get("reddit_user_agent") or "windows:tcg-restock-watch:1.0 (personal restock watcher)"),
     )

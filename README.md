@@ -20,18 +20,31 @@ python watch.py --lookup target 93954446
 
 | Retailer | Stock check | Interval | Needs background browser |
 |---|---|---|---|
-| Target | JSON endpoint, one request for all TCINs, Target Plus marketplace sellers ignored | 90 s | No |
+| Target | JSON endpoint, one request for all TCINs, called from the background browser (a plain client gets Target's captcha 403 once the IP is noticed; the browser passes the challenge), Target Plus marketplace sellers ignored | 90 s | Yes |
 | Best Buy | Official API by SKU, or page check without a key; marketplace sellers ignored | 60 s | Only without an API key |
 | Walmart | Loads product page in the background browser, reads embedded JSON, marketplace sellers ignored | 300 s | Yes |
 | GameStop | Product JSON endpoint over plain HTTP via `curl_cffi` (Chrome TLS impersonation; GameStop 403s Python's own TLS), one item per request; no marketplace on these pages; store-only pre-orders count as out of stock | 120 s | No |
 | Pokemon Center | Not pollable: Imperva blocks automated browsers outright | n/a | n/a |
-| Reddit deal feeds | Atom feed of new posts, keyword match | 120 s | No |
+| Riot Merch | Product page scrape (Next.js RSC-embedded JSON, plain HTTP, no bot challenge observed); official store, no marketplace; limit 1 per Riot ID per print run (not enforced by the watcher) | 300 s | No |
+| Reddit deal feeds | Official API with an app token (or the public Atom feed without one), keyword match | 120 s | No |
 
 On a drop at an acceptable price the watcher opens the product page in your normal browser (`cart: open`). Your real profile, already signed in, no automation fingerprint. You click Add to cart. The controlled background browser is never something you interact with; the retailers' bot checks flag it no matter who is clicking.
 
 `cart: auto` makes the background browser add the item itself. It worked on Target as a guest in testing but trips press-and-hold checks often enough that it is opt-in.
 
 Pokemon Center drops are covered by the Reddit feeds, where they get posted within minutes. The alert opens the link and you join the queue by hand.
+
+Booster boxes (no retailer sells the actual 36-pack box directly, only bundles/ETBs/tins) get a `tcgplayer` price-only entry instead: never a stock check, never an alert, just the existing TCGplayer market-price loop tracking what they're going for.
+
+### Reddit feeds
+
+Give the watcher a Reddit app, 2 minutes:
+
+1. Open https://www.reddit.com/prefs/apps, click "create another app", type **script**, redirect uri `http://localhost:8080`.
+2. Copy the id (the short string under the app name) and the secret into `config.local.yaml` as `reddit_client_id` and `reddit_client_secret`.
+3. Restart the watcher. The log's first feed line should say nothing about RSS.
+
+Without an app the watcher reads the public RSS feed, which Reddit throttles per IP for anything that is not a browser: on 2026-09-07 it answered 429 to the first request of almost every window, so the feed was paused 60% of the day. The API allows 100 requests a minute per app.
 
 Target, Best Buy, and Walmart all host third-party "marketplace" sellers on the same product pages. Those are where the $349 booster boxes live. The watcher treats a marketplace listing as out of stock, so an alert always means the retailer itself is selling at its own price.
 
@@ -68,6 +81,26 @@ A product retires when no retailer has had it in stock for `retire_after_days` (
 - **Market** is TCGplayer's market price for the same sealed product, looked up one product every 45 s and cached for a day. TCGplayer has no public API, so this uses the search endpoint its site calls, gently. A dozen requests in two minutes got a soft block during testing.
 
 The premise of the whole tool: retailer-sold listings are at MSRP, they just sell out in minutes. Market price is what you pay if you miss the drop.
+
+## Price history
+
+Every market-price tick appends a row to `<data_dir>/price_history.jsonl` (one line per
+product per day, since the tick already only revisits a product once a day). The status
+page shows 30/90-day change and a sparkline once a product has enough history.
+
+To backfill the past instead of waiting weeks: `python watch.py --backfill-history 90`
+pulls real daily prices from [tcgcsv.com](https://tcgcsv.com)'s dated archives (a free,
+TCGplayer-sanctioned mirror, history back to 2024-02-08), for every product the market
+tick has already matched at least once. Needs `pip install py7zr` (the archives are
+PPMd-compressed 7z files); only required for this command, not for normal running.
+
+## Getting prices from tcgcsv.com instead of scraping TCGplayer directly
+
+`tcgwatch/market.py` and `tcgwatch/singles.py` try [tcgcsv.com](https://tcgcsv.com)'s
+live JSON mirror of TCGplayer's own data first (same prices, official distribution, no
+soft-block risk), and only fall back to scraping TCGplayer's own search endpoint when
+tcgcsv doesn't have a matching set or product yet (e.g. a brand-new release tcgcsv
+hasn't mirrored) or a request to it fails.
 
 ## Finding more products
 

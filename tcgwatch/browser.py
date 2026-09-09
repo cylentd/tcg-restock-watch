@@ -17,6 +17,29 @@ log = logging.getLogger("tcgwatch.browser")
 SESSION = "tcg"
 
 
+def js_str(s: str) -> str:
+    """A JS string literal that survives the agent-browser .cmd shim on Windows.
+
+    The shim re-expands its arguments through cmd.exe, which splits at every '&' and
+    expands %..% pairs, so a URL with a query string arrives mangled (verified 2026-09-07:
+    'store_id' is not recognized as an internal or external command). Escaping those
+    characters as \\uXXXX inside the literal keeps cmd out of it; JS decodes them back.
+    """
+    out = json.dumps(s)
+    for ch in "&%!":
+        out = out.replace(ch, "\\u%04x" % ord(ch))
+    return out
+
+
+def _host(url: str) -> str:
+    return url.split("//", 1)[-1].split("/", 1)[0].lower()
+
+
+def _site(url: str) -> str:
+    """Registrable domain, roughly: last two labels (redsky.target.com -> target.com)."""
+    return ".".join(_host(url).split(".")[-2:])
+
+
 class BrowserError(RuntimeError):
     pass
 
@@ -87,8 +110,49 @@ class Browser:
         return out
 
     def open(self, url: str) -> str:
-        """Navigate and return the page title line agent-browser prints."""
+        """Navigate and return the page title line agent-browser prints. URLs with a query string
+        must go through goto(): `open` hands the raw URL to the .cmd shim, which splits at '&'."""
         return self.run("open", url)
+
+    def goto(self, url: str) -> None:
+        """Navigate from inside the page, so the URL never touches the command line."""
+        self.run("eval", "location.assign(" + js_str(url) + ")", check=False)
+
+    def fetch_json(self, url: str, tries: int = 4, wait_ms: int = 1500) -> tuple[int, object, str]:
+        """GET a JSON API as the browser. Returns (status, parsed body or None, note).
+
+        Fetches from the current tab when it is already on the API's site (cookies and CORS
+        line up). Otherwise, or when that fetch is refused, navigates the tab to the URL
+        itself: a top-level load runs the site's bot challenge and then renders the JSON as
+        the document body. Verified 2026-09-07 on redsky.target.com, where a plain client had
+        been captcha-blocked for most of a day: the navigation returned JSON on the first try
+        and page-context fetches returned 200 afterwards.
+        """
+        if _site(self.url() or "") == _site(url):
+            js = (
+                "(async()=>{try{const r=await fetch(" + js_str(url) + ",{credentials:'include'});"
+                "const t=await r.text();return JSON.stringify({s:r.status,t:t})}"
+                "catch(e){return JSON.stringify({s:0,t:String(e)})}})()"
+            )
+            res = self.eval_json(js)
+            if isinstance(res, dict) and res.get("s") == 200:
+                try:
+                    return 200, json.loads(res["t"]), "fetch"
+                except (json.JSONDecodeError, TypeError):
+                    pass
+        self.goto(url)
+        text = ""
+        for _ in range(tries):
+            self.wait(wait_ms)
+            text = self.eval_json("JSON.stringify(document.body?document.body.innerText:'')") or ""
+            if isinstance(text, str) and text[:1] in "{[":
+                try:
+                    return 200, json.loads(text), "navigate"
+                except json.JSONDecodeError:
+                    break
+        head = (text if isinstance(text, str) else str(text))[:120].replace("\n", " ")
+        status = 403 if ("captcha" in head.lower() or not head.strip()) else 0
+        return status, None, f"navigate: {head or 'empty body'}"
 
     def wait(self, ms: int) -> None:
         self.run("wait", str(ms))

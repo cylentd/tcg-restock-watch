@@ -57,6 +57,7 @@ def main() -> int:
     ap.add_argument("--login", action="store_true", help="open the watcher browser on each store's sign-in page")
     ap.add_argument("--lookup", nargs=2, metavar=("RETAILER", "ID"), help="print name/price/status for a product ID")
     ap.add_argument("--discover", metavar="KEYWORD", help="search Target for products it sells itself; prints config entries")
+    ap.add_argument("--backfill-history", type=int, metavar="DAYS", help="backfill daily market price history from tcgcsv.com's dated archives, for the last DAYS days (only for products the market tick has already matched at least once)")
     ap.add_argument("--site", action="store_true", help="build the static status page into site/")
     ap.add_argument("--deploy", action="store_true", help="with --site: deploy site/ to Vercel (npx vercel --prod)")
     ap.add_argument("-v", "--verbose", action="store_true")
@@ -91,6 +92,23 @@ def main() -> int:
             print(f"  - retailer: target\n    id: \"{h['id']}\"\n    name: \"{h['name']}\"\n    msrp: {h['price'] or 0}   # {h['status']}")
         return 0
 
+    if args.backfill_history:
+        from tcgwatch import history
+
+        print(f"backfilling up to {args.backfill_history} days from tcgcsv.com (this reads/writes {cfg.data_dir}, does not touch state used by the live poller's stock checks)...")
+        report = history.backfill(cfg, days=args.backfill_history)
+        if report["blocked"]:
+            print(f"STOPPED EARLY: tcgcsv.com challenged this session (see log). "
+                  f"{report['rows_written']} rows were written before that point and are kept. "
+                  f"Wait at least an hour before trying again -- do not retry immediately.")
+            return 1
+        print(f"done: {report['rows_written']} rows written across {report['products']} products, "
+              f"{report['days_attempted']} days attempted")
+        if report["groups_unresolved"]:
+            print(f"could not resolve a TCGplayer set for {len(report['groups_unresolved'])} product group(s) "
+                  f"(no market match yet, or no matching tcgcsv set found): {', '.join(report['groups_unresolved'][:10])}")
+        return 0
+
     if args.site:
         from tcgwatch import site as site_mod
 
@@ -105,7 +123,8 @@ def main() -> int:
     if args.lookup:
         retailer, pid = args.lookup[0].lower(), args.lookup[1]
         if retailer == "target":
-            info = target.lookup(cfg, pid)
+            # Through the watcher's Chrome: plain HTTP to redsky is captcha-blocked from this IP.
+            info = target.lookup(cfg, pid, Browser(cfg.chrome_path, cfg.profile_dir))
         elif retailer == "bestbuy":
             info = bestbuy.lookup(cfg, pid)
         elif retailer == "walmart":

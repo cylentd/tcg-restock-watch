@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import random
+import threading
 import time
 import webbrowser
 
@@ -13,6 +14,7 @@ from pathlib import Path
 from . import cart as cart_mod
 from . import feeds as feeds_mod
 from . import grouping
+from . import history
 from . import market as market_mod
 from . import msrp, notify
 from .browser import Browser, BrowserError
@@ -32,7 +34,6 @@ class Watcher:
         self.feed_due = 0.0
         self.feed_rules = [feeds_mod.FeedRule(f.subreddit, f.keywords, f.exclude) for f in cfg.feeds]
         self.captcha_alerted_at = 0.0
-        self.market_due = 0.0
         self.market_paused_until = 0.0
         self.site_dirty = False
         self.site_deployed_at = 0.0
@@ -66,7 +67,7 @@ class Watcher:
         if res.in_stock is None:
             if res.note.startswith("captcha") and time.time() - self.captcha_alerted_at > 1800:
                 self.captcha_alerted_at = time.time()
-                self.alert("Walmart wants a captcha", "Solve the Robot-or-human check in the watcher's Chrome window.", res.url, "default", "warning")
+                self.alert(f"{p.retailer.title()} wants a captcha", "Solve the bot check in the watcher's Chrome window.", res.url, "default", "warning")
             self.state.update(p.key, **self._img(res))
             return
 
@@ -79,7 +80,7 @@ class Watcher:
         # it's still there half an hour later, the first ping already told you (David, 2026-09-07).
         flipped = res.in_stock and not was_in
         if flipped:
-            acceptable, label = msrp.verdict(res.price, p.msrp, self.cfg.max_price_ratio)
+            acceptable, label = msrp.verdict(res.price, p.msrp, self.cfg.max_price_ratio, retailer=p.retailer)
             carted, opened, landing = False, False, res.url
             if acceptable and p.cart and self.cfg.cart_mode == "auto" and p.retailer != "pokemoncenter":
                 b = self.get_browser()
@@ -145,6 +146,17 @@ class Watcher:
         return out
 
     # -- TCGplayer market prices, one product per tick ------------------------------------
+    def run_market_loop(self) -> None:
+        # Own thread: a pass of the main loop can spend minutes inside browser polls, so a tick
+        # scheduled there ran once per pass instead of every market_interval. 86 groups took
+        # most of a day to price that way (2026-09-07).
+        while True:
+            try:
+                self.run_market_tick()
+            except Exception as e:  # noqa: BLE001
+                log.warning("market tick crashed: %s", e)
+            time.sleep(self.cfg.market_interval * random.uniform(0.9, 1.3))
+
     def run_market_tick(self) -> None:
         if time.time() < self.market_paused_until:
             return
@@ -169,6 +181,9 @@ class Watcher:
         if hit:
             log.info("MARKET %-50s $%s  (%s)", oldest_name[:50], hit["market"], hit["name"][:40])
             self.state.update(f"market:{oldest_key}", query=query, **hit)
+            # One row/day falls out naturally: this tick only revisits a given key once
+            # every 86400s (the check above), so no extra throttling needed here.
+            history.record(self.cfg.data_dir, oldest_key, hit.get("market"))
         else:
             log.info("MARKET %-50s no match", oldest_name[:50])
             self.state.update(f"market:{oldest_key}", query=query, market=None)
@@ -194,7 +209,7 @@ class Watcher:
     def run_feeds(self, alert: bool = True) -> list[dict]:
         if not self.feed_rules:
             return []
-        hits = feeds_mod.check(self.feed_rules, self.state)
+        hits = feeds_mod.check(self.feed_rules, self.state, self.cfg)
         for h in hits:
             price = feeds_mod.price_in(h["title"])
             body = h["title"]
@@ -225,6 +240,8 @@ class Watcher:
         log.info("watching %d products across %s; intervals %s; %d feed rules every %ds",
                  len(self.cfg.products), self.cfg.retailers,
                  {r: self.cfg.intervals[r] for r in self.cfg.retailers}, len(self.feed_rules), self.cfg.feed_interval)
+        if self.cfg.market:
+            threading.Thread(target=self.run_market_loop, name="market", daemon=True).start()
         while True:
             now = time.time()
             for retailer in self.cfg.retailers:
@@ -237,8 +254,5 @@ class Watcher:
             if self.feed_rules and now >= self.feed_due:
                 self.run_feeds()
                 self.feed_due = time.time() + self.cfg.feed_interval * random.uniform(0.85, 1.15)
-            if self.cfg.market and now >= self.market_due:
-                self.run_market_tick()
-                self.market_due = time.time() + self.cfg.market_interval * random.uniform(0.9, 1.3)
             self.maybe_deploy_site()
             time.sleep(2)

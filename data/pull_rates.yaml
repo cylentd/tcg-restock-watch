@@ -1,0 +1,52 @@
+# Chase-card pull rates for EV calculation (tcgwatch/ev.py). See docs/ev-calculator-spec.md.
+#
+# Riot has not published official Riftbound pack odds (confirmed via search 2026-09-08).
+# Per-box expected counts below are community data from tcgtalk.com (168 packs opened,
+# https://tcgtalk.com/guides/unleashed-riftbound-pull-rates-box-opening, retrieved
+# 2026-09-08) -- treat as an estimate, not a manufacturer figure.
+#
+# `rarity_query` maps a tier to TCGplayer's own rarityName search facet (verified live
+# 2026-09-08: Riftbound: Unleashed singles carry Common/Uncommon/Rare/Epic/Showcase as
+# real, populated facets -- see tcgwatch/singles.py). Those tiers get a LIVE mean market
+# price at run time. A tier with no `rarity_query` (the ultra-rare foils/serials below)
+# isn't reliably findable this way -- too few live listings ever show up under any rarity
+# facet -- so it uses `price_estimate` instead, the community guide's own value estimate,
+# clearly not live data.
+#
+# Commons/uncommons are omitted: TCGplayer mean was $0.08/$0.25 respectively (checked
+# 2026-09-08), negligible next to a $120 box price. Matches the spec's stated v1 scope
+# (chase-card EV only, base card value ignored).
+
+sets:
+  riftbound_unleashed:
+    display_name: "Riftbound Unleashed"
+    match: "unleashed booster display"  # substring match (lowercase) against a site.py group's
+                                         # normalized product name -- see tcgwatch/ev.py:match_group
+    packs_per_box: 24
+    tcgplayer_set_name: "Riftbound: Unleashed"  # must match TCGplayer's setName facet exactly
+    tcgplayer_game: "Riftbound"                  # tcgwatch/market.py's LINE key
+    tiers:
+      # "Legend" (~52% of packs, 12-13/box) and "Regular Rare" (~50%, 25-27/box) are
+      # separate pull slots in the community guide but both land in TCGplayer's single
+      # "Rare" rarityName facet -- combined per-box count below.
+      - name: "Rare (Legend + Regular Rare)"
+        rarity_query: "Rare"
+        per_box: 38.5
+      - name: "Epic"
+        rarity_query: "Epic"
+        per_box: 6.5
+      - name: "Showcase / Alt Art"
+        rarity_query: "Showcase"
+        per_box: 3
+      - name: "Overnumbered"
+        per_box: 0.4          # ~1 per 2-3 boxes
+        price_estimate: 75    # community range $50-100, midpoint
+        price_note: "community estimate, not live TCGplayer data"
+      - name: "Signed Overnumbered"
+        per_box: 0.2          # <1% of packs
+        price_estimate: 1000  # community: "$1,000+" -- floor, not a real ceiling
+        price_note: "community estimate, likely understates real value"
+      - name: "Baron Nashor (Ultimate Rare)"
+        per_box: 0.05         # "<0.1/box, not observed" per source -- rough guess
+        price_estimate: null  # unknown; excluded from EV sum, shown as a footnote instead
+        price_note: "no pull ever confirmed in the source's 168-pack sample; value unknown"

@@ -13,7 +13,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from . import feeds, grouping, images, lifecycle
+from . import ev, feeds, grouping, history, images, lifecycle
 from .config import Config
 from .retailers import product_url
 from .state import State
@@ -78,6 +78,20 @@ def collect(cfg: Config, img_dir: Path | None = None) -> dict:
         g["in_stock"] = any(l["status"] == "in" for l in g["listings"])
         g["premium"] = round(g["market"]["price"] / g["msrp"], 2) if g["market"] and g["msrp"] else None
         g["hot"] = lifecycle.hot_score(g["premium"], g["buzz"], g["last_in_stock"], g["in_stock"], g["name"])
+        # Chase-card EV, only for the handful of sets with pull-rate data (data/pull_rates.yaml).
+        # box_price prefers the live market price (what it actually costs to buy right now) over
+        # MSRP, since the question is "worth buying at today's price", not at list price.
+        set_key = ev.match_group(g["name"])
+        box_price = (g["market"]["price"] if g["market"] else None) or g["msrp"]
+        g["ev"] = ev.get_or_refresh(state, set_key, box_price) if set_key else None
+        # 30/90-day price trend (roadmap item 3) -- only once enough daily rows exist to say
+        # anything (see tcgwatch/history.py, appended once a day by the watcher's market tick).
+        series = history.series_for(cfg.data_dir, key)
+        g["history"] = {
+            "pct30": history.change_pct(series, 30),
+            "pct90": history.change_pct(series, 90),
+            "spark": history.sparkline_points(series, 90),
+        } if len(series) >= 2 else None
         g["listings"].sort(key=lambda l: order.get(l["retailer"], 9))
     return {
         "generated": time.time(),
@@ -148,8 +162,8 @@ TEMPLATE = r"""<!doctype html>
   .wrap { position:relative; z-index:1; }
   body::after { content:""; position:fixed; top:0; left:0; right:0; height:2px; z-index:6; background:color-mix(in srgb, var(--accent) 60%, transparent); opacity:.6; }
   @keyframes rise { from { opacity:0; transform:translateY(14px);} }
-  header, .stats, .reel-wrap, .cal-wrap, .bar, .list { animation:rise .45s cubic-bezier(.2,.7,.2,1) both; }
-  .stats { animation-delay:.05s; } .reel-wrap { animation-delay:.1s; } .cal-wrap { animation-delay:.12s; } .bar { animation-delay:.15s; } .list { animation-delay:.2s; }
+  header, .stats, .reel-wrap, .cal-wrap, .lgs-wrap, .bar, .list { animation:rise .45s cubic-bezier(.2,.7,.2,1) both; }
+  .stats { animation-delay:.05s; } .reel-wrap { animation-delay:.1s; } .cal-wrap { animation-delay:.12s; } .lgs-wrap { animation-delay:.13s; } .bar { animation-delay:.15s; } .list { animation-delay:.2s; }
 
   /* Coming up: a row of vertical tiles, tall not wide. The glyph is the dominant visual (the
      game reads at a glance before the name does); date leaf and countdown book-end it. */
@@ -179,6 +193,19 @@ TEMPLATE = r"""<!doctype html>
   .rel.now .rel-when { color:#5fd65f; }
   .gi { display:inline-flex; width:14px; height:14px; color:var(--gc, currentColor); vertical-align:-2px; margin-right:5px; }
   .gi svg { width:100%; height:100%; }
+
+  /* Local shops: a static, hand-curated reference list (no live data, no polling) — same card
+     language as everything else on the page (var(--card-2)/var(--stroke)) so it reads as part of
+     the site rather than a bolted-on afterthought. */
+  .lgs-wrap { margin:16px -16px 0; }
+  .lgs-wrap .reel-head { padding:0 16px 8px; }
+  .lgs-note { margin:0; padding:0 16px 8px; color:var(--ink-3); font-size:12px; }
+  .lgs-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:8px; padding:0 16px 14px; }
+  .lgs-card { display:flex; flex-direction:column; gap:2px; padding:10px 12px; border-radius:12px; background:var(--card-2); border:1px solid var(--line);
+    text-decoration:none; color:var(--ink-2); transition:border-color .15s, background .15s, transform .15s; }
+  .lgs-card:hover { border-color:var(--line-2); background:var(--card); transform:translateY(-2px); }
+  .lgs-name { font-weight:700; color:var(--ink); font-size:14px; }
+  .lgs-city { font-size:12px; color:var(--ink-3); }
 
   /* Game badges: one glyph per game, hue on the glyph only (retailers own the dot colors). */
   .tag { display:inline-flex; align-items:center; gap:4px; }
@@ -406,6 +433,28 @@ TEMPLATE = r"""<!doctype html>
   .verdict.even { background:var(--card-2); border:1px solid var(--line); color:var(--ink-2); }
   .verdict.even svg { color:var(--ink-3); }
   .matched a { color:var(--ink-2); }
+
+  /* Chase-card EV: only shown for the handful of sets with pull-rate data (data/pull_rates.yaml).
+     A long-run average across many box openings, dominated by rare big hits -- not a per-box
+     guarantee -- so the headline says so explicitly rather than implying a sure thing. */
+  .ev-box { border-radius:14px; border:1px solid var(--line); background:var(--card-2); padding:12px 14px; margin:14px 0; font:14px/1.4 var(--body); }
+  .ev-box .ev-head { display:flex; justify-content:space-between; align-items:baseline; font-weight:700; margin-bottom:2px; }
+  .ev-box .ev-head.buy { color:#bdf7bd; } .ev-box .ev-head.pass { color:#ffd3cd; }
+  .ev-box .ev-note { color:var(--ink-3); font-size:12px; margin-bottom:8px; }
+  .ev-tiers { width:100%; border-collapse:collapse; font-size:12.5px; }
+  .ev-tiers td { padding:3px 0; color:var(--ink-2); }
+  .ev-tiers td:last-child, .ev-tiers th:last-child { text-align:right; }
+  .ev-tiers .est { color:var(--ink-3); font-style:italic; }
+
+  /* Price trend: 90-day sparkline + 30/90-day % change (roadmap item 3), fed from
+     tcgwatch/history.py's daily-append price_history.jsonl. Absent entirely (no box, no gap)
+     until a product has at least two days of recorded price -- a flat line for one point would
+     read as data when it's really "we just started watching this". */
+  .hist-box { border-radius:14px; border:1px solid var(--line); background:var(--card-2); padding:12px 14px; margin:14px 0; }
+  .hist-top { display:flex; align-items:center; gap:14px; }
+  .spark { flex:1; height:28px; width:100%; min-width:0; display:block; }
+  .hist-chg { display:flex; flex-direction:column; gap:3px; flex:none; font:700 12.5px/1.3 var(--body); text-align:right; }
+  .chg.up { color:#5fd65f; } .chg.down { color:#ff8a80; } .chg.flat { color:var(--ink-2); } .chg.muted { color:var(--ink-3); font-weight:400; }
   .sheet-sec { margin:16px 0 6px; }
   .stores { display:flex; flex-direction:column; gap:6px; }
   .store { display:grid; grid-template-columns:8px minmax(0,1fr) auto auto 14px; align-items:center; gap:10px; padding:9px 12px; border-radius:10px; background:var(--card); border:1px solid var(--line);
@@ -480,6 +529,20 @@ TEMPLATE = r"""<!doctype html>
 <section class="cal-wrap" id="calWrap" hidden>
   <button class="reel-head cal-toggle" id="calToggle"><span class="micro">Coming up</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
   <div class="cal-collapse" id="calCollapse"><div class="cal" id="cal"></div></div>
+</section>
+
+<!-- Local shops: hand-curated static reference list near ZIP 95035 (Milpitas, CA). No live data,
+     no API calls — just links a user can click through and check for themselves. Names, addresses
+     and URLs below were confirmed via web search 2026-09-07 (Wizards store locator, Yelp, each
+     shop's own site) — verify hours/inventory yourself before visiting, those change often. -->
+<section class="lgs-wrap" id="lgsWrap">
+  <div class="reel-head"><span class="micro">Local shops near 95035</span></div>
+  <p class="lgs-note">Verified 2026-09-07 &mdash; confirm current hours before visiting.</p>
+  <div class="lgs-grid">
+    <a class="lgs-card" href="https://www.legendscomicsandgames.com/" target="_blank" rel="noopener"><span class="lgs-name">Legends Comics and Games</span><span class="lgs-city">Great Mall, Milpitas, CA</span></a>
+    <a class="lgs-card" href="https://www.rngtherapy.shop/" target="_blank" rel="noopener"><span class="lgs-name">RNG Therapy Card Lounge</span><span class="lgs-city">San Jose, CA</span></a>
+    <a class="lgs-card" href="https://gamecornersj.square.site/" target="_blank" rel="noopener"><span class="lgs-name">Game Corner San Jose</span><span class="lgs-city">San Jose, CA</span></a>
+  </div>
 </section>
 
 <div class="bar">
@@ -704,6 +767,45 @@ function bestDeal(g){
   if (diff >= m.price * 0.03) return { cls:'pass', text: `Every listing runs over market right now. Closest is <b>${r.l}</b> at ${money(best.price)}.` };
   return { cls:'even', text: `<b>${r.l}</b> at ${money(best.price)} is right at market price.` };
 }
+// EV per set link-out was dropped 2026-09-07: no existing EV calculator site was found to link
+// to. Built our own instead (item 7, tcgwatch/ev.py) -- chase-card EV only (base cards ignored,
+// see docs/ev-calculator-spec.md), a long-run mean across many box openings, not a per-box
+// guarantee. `g.ev` is set server-side only for the handful of sets with pull-rate data.
+function evBlock(g){
+  const e = g.ev;
+  if (!e || e.ev == null) return '';
+  const cls = e.verdict > 0 ? 'buy' : 'pass';
+  const rows = e.tiers.map(t => t.price == null
+    ? `<tr><td>${t.name}</td><td class="est">price unknown</td></tr>`
+    : `<tr><td>${t.name} <span class="est">(${t.per_box}/box)</span></td><td${t.price_source && t.price_source.includes('community') ? ' class="est"' : ''}>${money(t.contribution)}</td></tr>`
+  ).join('');
+  return `<div class="ev-box">
+    <div class="ev-head ${cls}"><span>Chase-card EV: ${money(e.ev)}</span><span>${e.verdict >= 0 ? '+' : '-'}${money(Math.abs(e.verdict))} vs box price</span></div>
+    <div class="ev-note">Long-run average across many box openings (a few rare big hits pull it up) &mdash; not a promise for this one box. Base cards not counted. Estimated-price tiers in <span class="est">italics</span>.</div>
+    <table class="ev-tiers">${rows}</table>
+  </div>`;
+}
+// 90-day price trend: a small inline sparkline (no library) + 30/90-day % change, only for
+// products with at least two days of recorded price -- see g.history in collect() (site.py).
+function sparkSvg(pts){
+  if (!pts || pts.length < 2) return '';
+  const min = Math.min(...pts), max = Math.max(...pts), span = (max - min) || 1;
+  const w = 100, h = 28;
+  const step = w / (pts.length - 1);
+  const coords = pts.map((p, i) => `${(i * step).toFixed(1)},${(h - (p - min) / span * h).toFixed(1)}`).join(' ');
+  const up = pts[pts.length - 1] >= pts[0];
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${coords}" fill="none" stroke="${up ? '#5fd65f' : '#ff8a80'}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`;
+}
+function changeChip(pct, label){
+  if (pct == null) return `<span class="chg muted">${label} no data yet</span>`;
+  const cls = pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat';
+  return `<span class="chg ${cls}">${label} ${pct > 0 ? '+' : ''}${pct}%</span>`;
+}
+function historyBlock(g){
+  const h = g.history;
+  if (!h) return '';
+  return `<div class="hist-box"><div class="hist-top">${sparkSvg(h.spark)}<div class="hist-chg">${changeChip(h.pct30, '30d')}${changeChip(h.pct90, '90d')}</div></div></div>`;
+}
 function openSheet(g){
   const p = g.premium, m = g.market, rank = live().findIndex(x => x.key === g.key) + 1;
   $('#sheetArt').innerHTML = g.img ? `<img src="${g.img}" alt="">` : PLACEHOLDER;
@@ -719,7 +821,9 @@ function openSheet(g){
     <h2 class="sheet-title" id="sheetTitle">${g.name}</h2>
     ${m && m.name && m.name !== g.name ? `<div class="matched">TCGplayer match: <a href="${m.url}" target="_blank" rel="noopener">${m.name}</a></div>` : ''}
     ${meter(g, true)}
+    ${historyBlock(g)}
     ${deal ? `<div class="verdict ${deal.cls}">${VERDICT_ICON[deal.cls]}<span>${deal.text}</span></div>` : ''}
+    ${evBlock(g)}
     <div class="micro sheet-sec">Where it sells</div>
     <div class="stores">${stores}</div>
     <div class="signals">${sig}</div>`;

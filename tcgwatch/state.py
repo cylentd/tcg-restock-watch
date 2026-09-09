@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import threading
 import time
 from pathlib import Path
 
@@ -10,6 +11,7 @@ from pathlib import Path
 class State:
     def __init__(self, path: Path):
         self.path = path
+        self._lock = threading.Lock()
         self._data: dict[str, dict] = {}
         if path.exists():
             try:
@@ -21,12 +23,17 @@ class State:
         return self._data.get(key, {})
 
     def update(self, key: str, **fields) -> None:
-        entry = self._data.setdefault(key, {})
-        entry.update(fields)
-        entry["updated"] = time.time()
-        self.save()
+        with self._lock:
+            entry = self._data.setdefault(key, {})
+            entry.update(fields)
+            entry["updated"] = time.time()
+            self._save()
 
     def save(self) -> None:
+        with self._lock:
+            self._save()
+
+    def _save(self) -> None:
         tmp = self.path.with_suffix(".tmp")
         tmp.write_text(json.dumps(self._data, indent=2), encoding="utf-8")
         tmp.replace(self.path)

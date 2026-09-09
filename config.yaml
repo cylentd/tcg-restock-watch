@@ -14,7 +14,8 @@ discord_invite: ""
 ntfy_topic: ""
 
 # Poll interval per retailer, in seconds. Jitter of +-15% is added automatically.
-# Target: one batched request for every TCIN. Best Buy without an API key loads one
+# Target: one batched request for every TCIN, made from the watcher's Chrome (plain HTTP
+# from this IP is captcha-blocked since 2026-09-07). Best Buy without an API key loads one
 # page per product in the background browser (about 6 s each), so keep it slow;
 # with a free key from developer.bestbuy.com it becomes one request and 60 s is fine.
 intervals:
@@ -22,6 +23,11 @@ intervals:
   bestbuy: 600
   walmart: 600
   gamestop: 180
+  # riotmerch is a real stock check (plain HTTP, no browser); tcgplayer is the price-only
+  # stub for booster boxes (item 4) -- this interval only gates how often the stub re-runs,
+  # the actual pricing cadence is market_interval below, not this.
+  riotmerch: 300
+  tcgplayer: 3600
 
 # Alert but do NOT open the page when price exceeds msrp * max_price_ratio.
 max_price_ratio: 1.10
@@ -34,6 +40,32 @@ cart: open
 
 # Best Buy official API key (free, instant): https://developer.bestbuy.com/  (put it in config.local.yaml)
 bestbuy_api_key: ""
+
+# Per-retailer shipping: free over this subtotal, else a flat fee. Used by msrp.landed_price()
+# (tcgwatch/msrp.py) so a verdict compares MSRP against price + likely shipping, not the raw
+# item price alone. free_over: 0 means "assume free" (no known threshold to gate on) rather
+# than "never free" -- set a real flat_fee too if a retailer actually always charges one.
+# No web access from this session to confirm any of these; every number below is unverified
+# and should be confirmed against the live retailer before trusting it for a real decision.
+shipping:
+  # unverified: commonly cited as $35 free-shipping threshold, but not confirmed this session. TODO confirm.
+  target: {free_over: 35, flat_fee: 0}
+  # unverified: Best Buy's non-member threshold is commonly cited as $35, but My Best Buy
+  # membership tiers can change this. TODO confirm.
+  bestbuy: {free_over: 35, flat_fee: 0}
+  # unverified: commonly cited as $35 free-shipping threshold, but not confirmed this session. TODO confirm.
+  walmart: {free_over: 35, flat_fee: 0}
+  # unverified, low confidence: not confident of GameStop's actual current threshold. Placeholder
+  # only -- TODO confirm before relying on this for GameStop verdicts.
+  gamestop: {free_over: 35, flat_fee: 0}
+  # unverified: no data on Riot Merch's shipping policy. Placeholder assumes free (free_over: 0
+  # means "always treated as clearing the threshold") since booster displays are $119.99 and no
+  # signal suggests a per-order fee. TODO confirm.
+  riotmerch: {free_over: 0, flat_fee: 0}
+  # TCGplayer marketplace sellers set their own shipping; a flat few dollars per order (not a
+  # free-shipping tier) is the common shape, but the exact number is a guess, not a confirmed
+  # figure. TODO confirm with a real seller listing before trusting this number.
+  tcgplayer: {free_over: 0, flat_fee: 4.99}
 
 # Target uses store + zip for its fulfillment lookup. Online shipping status is
 # what triggers the alert; the store only affects pickup fields.
@@ -57,9 +89,10 @@ retire_missing_days: 7
 
 # TCGplayer market price, for the "MSRP vs market" comparison on the status page.
 # One product is looked up every market_interval seconds and kept for a day, so the
-# list fills in over the first hour and then refreshes as a slow trickle.
+# list fills in over the first half hour and then refreshes as a slow trickle. 10 s got
+# a cookieless probe session challenged (2026-09-06); 5 s is an experiment, watch the log.
 market: true
-market_interval: 45
+market_interval: 5
 
 # Rebuild and redeploy the status page (npx vercel) when stock or prices change,
 # at most once per 5 minutes. Needs `npx vercel login` done once on this PC.
@@ -68,6 +101,14 @@ site_deploy: true
 # Reddit deal feeds: free, fast signal for stores that block bots (Pokemon Center,
 # Costco, Sam's Club, Amazon). Any new post whose title contains a keyword alerts
 # your phone with the post's link. Checked every feed_interval seconds.
+#
+# Needs a Reddit app so the watcher can use the official API (put the two values in
+# config.local.yaml): https://www.reddit.com/prefs/apps > create app > type "script",
+# redirect uri http://localhost:8080. The id is the short string under the app name,
+# the secret is labeled. Without them the watcher reads the public RSS, which Reddit
+# throttled to a 429 on almost every request from this IP on 2026-09-07.
+reddit_client_id: ""
+reddit_client_secret: ""
 feed_interval: 120
 feeds:
   - subreddit: PokemonTCGDeals
@@ -85,6 +126,7 @@ feeds:
 #   bestbuy       SKU, the number after "/sku/" or "skuId=" in the URL (or give the full url)
 #   walmart       item ID, the number at the end of the /ip/... URL
 #   pokemoncenter NOT pollable (Imperva blocks automated browsers); covered by the feeds above
+#   (--lookup target also runs through the watcher's Chrome, so it opens a window)
 products:
   # ---- Target: Pokemon (Target does not sell One Piece itself, only marketplace) ----
   - {retailer: target, id: "93954446", name: "Pokemon Prismatic Evolutions Booster Bundle", msrp: 31.99}
@@ -219,7 +261,7 @@ products:
   - {retailer: walmart, id: "19686652780", name: "Riftbound Unleashed Vault Bundle"}
   - {retailer: gamestop, id: "20035427", name: "Riftbound Unleashed Vault Bundle"}
   - {retailer: gamestop, id: "20035470", name: "Riftbound Vendetta Zed vs Shen Champion Deck Showdown", msrp: 39.98}
-  - {retailer: target, id: "95275676", name: "Riftbound Unleashed Champion Deck Vi", msrp: 19.99}
+  - {retailer: target, id: "95275676", name: "Riftbound Unleashed Champion Deck Vi", msrp: 19.99, tcgplayer: 678157}
   - {retailer: bestbuy, id: "12660799", name: "Riftbound Unleashed Champion Deck Vi", msrp: 19.99}
   - {retailer: gamestop, id: "20035428", name: "Riftbound Unleashed Champion Deck Vi", msrp: 19.99}
   - {retailer: target, id: "95275674", name: "Riftbound Unleashed Champion Deck Vex", msrp: 19.99}
@@ -235,6 +277,33 @@ products:
   - {retailer: gamestop, id: "20032530", name: "Riftbound Spiritforged Sleeved Booster Pack", msrp: 5}
   - {retailer: walmart, id: "19572551769", name: "Riftbound Spiritforged Sleeved Booster Pack", msrp: 5}
   - {retailer: gamestop, id: "20022648", name: "Riftbound Origins Sleeved Booster Pack", msrp: 5}
+
+  # ---- Riot Merch (merch.riotgames.com): sells Booster Displays directly, no marketplace.
+  #      Plain HTTP page scrape, verified 2026-09-07 (see tcgwatch/retailers/riotmerch.py).
+  #      1 per Riot ID / print run (not enforced here, see README). Joins the same name
+  #      group as the Target/Walmart rows above for the market-price lookup. ----
+  - {retailer: riotmerch, id: "riftbound-unleashed-booster-display", name: "Riftbound Unleashed Booster Display", msrp: 120}
+  - {retailer: riotmerch, id: "riftbound-origins-booster-display", name: "Riftbound Origins Booster Display", msrp: 120}
+  - {retailer: riotmerch, id: "riftbound-spiritforged-booster-display", name: "Riftbound Spiritforged Booster Display", msrp: 120}
+  - {retailer: riotmerch, id: "riftbound-vendetta-booster-display", name: "Riftbound Vendetta Booster Display", msrp: 120}
+
+  # ---- Price-only watch (item 4): Pokemon Booster Boxes. No retailer here sells the actual
+  #      36-pack box (only bundles/ETBs/tins above); this reports in_stock=None always (no
+  #      restock alert, no cart-open) and relies on the existing TCGplayer market-price loop
+  #      for pricing (tcgwatch/retailers/tcgplayer_price.py). `id` is an internal key only,
+  #      not a retailer SKU; `url` points at a TCGplayer search since there is no product page
+  #      to check. MSRP 161.64 = 36 packs at $4.49 (tcgwatch/msrp.py). GameNerdz deferred, see
+  #      report / roadmap. ----
+  - {retailer: tcgplayer, id: "pokemon-mega-evolution-chaos-rising-booster-box", name: "Pokemon Mega Evolution Chaos Rising Booster Box", msrp: 161.64,
+     url: "https://www.tcgplayer.com/search/pokemon/product?q=Mega+Evolution+Chaos+Rising+Booster+Box"}
+  - {retailer: tcgplayer, id: "pokemon-mega-evolution-ascended-heroes-booster-box", name: "Pokemon Mega Evolution Ascended Heroes Booster Box", msrp: 161.64,
+     url: "https://www.tcgplayer.com/search/pokemon/product?q=Mega+Evolution+Ascended+Heroes+Booster+Box"}
+  - {retailer: tcgplayer, id: "pokemon-prismatic-evolutions-booster-box", name: "Pokemon Prismatic Evolutions Booster Box", msrp: 161.64,
+     url: "https://www.tcgplayer.com/search/pokemon/product?q=Prismatic+Evolutions+Booster+Box"}
+  - {retailer: tcgplayer, id: "pokemon-destined-rivals-booster-box", name: "Pokemon Destined Rivals Booster Box", msrp: 161.64,
+     url: "https://www.tcgplayer.com/search/pokemon/product?q=Destined+Rivals+Booster+Box"}
+  - {retailer: tcgplayer, id: "pokemon-surging-sparks-booster-box", name: "Pokemon Surging Sparks Booster Box", msrp: 161.64,
+     url: "https://www.tcgplayer.com/search/pokemon/product?q=Surging+Sparks+Booster+Box"}
 
 # Upcoming releases for the "Coming up" section. Hand-maintained; add a set the day it is announced.
 # Entries stay 14 days past their date as "out now", then drop off. Researched 2026-09-07.
