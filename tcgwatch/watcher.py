@@ -11,6 +11,7 @@ import webbrowser
 import subprocess
 from pathlib import Path
 
+from . import NO_WINDOW
 from . import cart as cart_mod
 from . import feeds as feeds_mod
 from . import grouping
@@ -242,7 +243,7 @@ class Watcher:
                 fh.write(f"\n===== {time.strftime('%Y-%m-%d %H:%M:%S')} deploy =====\n")
                 fh.flush()
                 subprocess.Popen(f'npx -y vercel --prod --yes --cwd "{root / "site"}"', shell=True,
-                                 stdout=fh, stderr=subprocess.STDOUT)
+                                 stdout=fh, stderr=subprocess.STDOUT, creationflags=NO_WINDOW)
             self.site_deploys_today += 1
             log.info("status page rebuilt and deploy started (%d/%d today, %s)",
                      self.site_deploys_today, self.cfg.site_daily_budget,

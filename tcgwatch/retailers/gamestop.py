@@ -21,6 +21,7 @@ try:
 except ImportError:  # pragma: no cover
     cffi_requests = None
 
+from .. import NO_WINDOW
 from ..config import Config, Product
 from . import Result, product_url
 
@@ -50,7 +51,8 @@ def _get(params: dict) -> tuple[int, str, str]:
     cmd = ["curl", "-s", "-m", "20", "-w", "\n%{http_code} %{content_type}", API + "?" + urllib.parse.urlencode(params)]
     for k, v in HEADERS.items():
         cmd += ["-H", f"{k}: {v}"]
-    out = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30).stdout
+    out = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                         timeout=30, creationflags=NO_WINDOW).stdout
     body, _, tail = out.rpartition("\n")
     code, _, ctype = tail.partition(" ")
     return int(code or 0), ctype, body

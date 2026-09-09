@@ -12,6 +12,8 @@ import logging
 import shutil
 import subprocess
 
+from . import NO_WINDOW
+
 log = logging.getLogger("tcgwatch.browser")
 
 SESSION = "tcg"
@@ -81,7 +83,7 @@ class Browser:
         cmd = self._base() + ["open", "about:blank"]
         try:
             subprocess.run(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                           timeout=90)
+                           timeout=90, creationflags=NO_WINDOW)
         except subprocess.TimeoutExpired:
             log.warning("agent-browser daemon start timed out; continuing")
         Browser._daemon_ready = True
@@ -92,7 +94,7 @@ class Browser:
         log.debug("agent-browser %s", " ".join(args[:3]))
         proc = subprocess.Popen(
             cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            text=True, encoding="utf-8", errors="replace",
+            text=True, encoding="utf-8", errors="replace", creationflags=NO_WINDOW,
         )
         try:
             stdout, stderr = proc.communicate(timeout=self.timeout)
