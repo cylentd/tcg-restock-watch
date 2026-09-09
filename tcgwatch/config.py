@@ -56,13 +56,16 @@ class Config:
     market: bool = True
     market_interval: int = 20
     site_deploy: bool = False
-    # Vercel Hobby allows 100 deployments a day and 1 at a time (verified 2026-09-08), so
-    # the budget -- not the interval -- is what keeps a churny day from bricking the site.
-    # An interval alone cannot: 10-minute spacing sustained all day is 144 deploys.
-    site_min_interval: int = 1800    # normal floor between deploys
-    site_hot_interval: int = 600     # floor while any watched product is in stock
+    # Vercel Hobby allows 100 deployments a day and 1 at a time (verified 2026-09-08), and
+    # that cap is account-wide, not per-project (confirmed 2026-09-08) -- team-watch and
+    # seat-scout are now also push-deploy on the same account, so this project's share of
+    # the 100 is capped well under half, leaving room for their pushes and manual ff-jarvis
+    # deploys. The budget -- not the interval -- is what keeps a churny day from bricking
+    # the site; an interval alone cannot (10-minute spacing sustained all day is 144).
+    site_min_interval: int = 3600    # normal floor between deploys
+    site_hot_interval: int = 900     # floor while any watched product is in stock
     site_max_age: int = 1800         # deploy even with nothing changed, to prove liveness
-    site_daily_budget: int = 80      # hard stop, leaving headroom under Vercel's 100
+    site_daily_budget: int = 25      # hard stop, most of Vercel's 100 left for other projects
     retire_after_days: int = 60
     retire_missing_days: int = 7
     discord_invite: str | None = None

@@ -94,8 +94,11 @@ retire_missing_days: 7
 market: true
 market_interval: 5
 
-# Rebuild and redeploy the status page (npx vercel) when stock or prices change,
-# at most once per 5 minutes. Needs `npx vercel login` done once on this PC.
+# Rebuild and redeploy the status page (npx vercel) when stock or prices change, at most
+# once per 30-60 min (site_min_interval/site_hot_interval), capped at 25 deploys/day
+# (site_daily_budget) -- Vercel's 100/day cap is shared across all projects on the
+# account, and team-watch/seat-scout now also push-deploy on it. Needs `npx vercel login`
+# done once on this PC.
 site_deploy: true
 
 # Reddit deal feeds: free, fast signal for stores that block bots (Pokemon Center,
