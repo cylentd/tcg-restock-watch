@@ -78,30 +78,72 @@ PAGE_JS = """(()=>{
 PAGE_JS = " ".join(line.strip() for line in PAGE_JS.splitlines())
 
 
-def _browser_check(products: list[Product], cfg: Config, browser) -> list[Result]:
-    results = []
-    failures = 0
-    for i, p in enumerate(products):
-        url = product_url(p)
-        if failures >= 3:
-            # Three straight load errors means Best Buy is refusing this session; stop for this cycle.
-            results.append(Result(p, None, None, url, "skipped after repeated load errors"))
-            continue
-        if i:
-            # Akamai resets the connection after a burst of quick loads. Pace like a person.
-            time.sleep(random.uniform(4, 9))
-        try:
-            browser.open(url)
+def _load(browser, url: str) -> dict | None:
+    """Navigate to a product page and return PAGE_JS's read of it, or None if it never rendered.
+
+    Each product gets its own tab, closed afterwards. Loading Best Buy pages back to back in
+    one tab leaks: measured 2026-09-21, the renderer reached 3.5 GB after 11 loads, each
+    load slowed from 5 s to 50 s, and then every command hung until the pass gave up.
+    `open` also waits for `load`, which Best Buy's third-party scripts stall past 30 s, so
+    navigate without waiting, wait only for DOMContentLoaded, then poll for the card.
+    """
+    browser.run("tab", "new", "about:blank")
+    try:
+        browser.goto(url)
+        browser.run("wait", "--load", "domcontentloaded", check=False)
+        info = None
+        for _ in range(4):
             browser.wait(1500)
             info = browser.eval_json(PAGE_JS)
             if not isinstance(info, dict):
+                continue
+            if info.get("blocked") or "chrome-error" in str(info.get("url")):
+                return info
+            # goto() is fire-and-forget: until the tab leaves about:blank, PAGE_JS is reading nothing.
+            # (The final URL is not compared to `url`: /site/{sku}.p links redirect to /product/<slug>/<code>.)
+            if "bestbuy.com" not in str(info.get("url")):
+                continue
+            if info.get("hasButton") or info.get("soldOut") or info.get("comingSoon") or info.get("seller"):
+                return info
+        return info if isinstance(info, dict) and "bestbuy.com" in str(info.get("url")) else None
+    finally:
+        browser.run("tab", "close", check=False)
+
+
+_start = 0  # rotates the starting product each pass so a bad run never starves the same tail
+
+
+def _browser_check(products: list[Product], cfg: Config, browser) -> list[Result]:
+    global _start
+    results = []
+    blocked = errors = 0
+    order = products[_start:] + products[:_start]
+    _start = (_start + 8) % len(products) if products else 0
+    for i, p in enumerate(order):
+        url = product_url(p)
+        if blocked >= 3:
+            # Three straight block pages means Best Buy is refusing this session; stop for this cycle.
+            results.append(Result(p, None, None, url, "skipped after repeated blocks"))
+            continue
+        if errors >= 6:
+            # Six timeouts in one pass is a wedged browser, not slow pages; stop and let the next pass retry.
+            results.append(Result(p, None, None, url, "skipped after repeated load errors"))
+            continue
+        if i:
+            # Akamai resets the connection after a burst of quick loads. Pace like a person,
+            # and back off hard after a failed load so a tarpitted session gets to recover.
+            time.sleep(random.uniform(30, 45) if results and results[-1].in_stock is None else random.uniform(4, 9))
+        try:
+            info = _load(browser, url)
+            if info is None:
+                errors += 1
                 results.append(Result(p, None, None, url, "page did not render"))
                 continue
             if info.get("blocked") or "chrome-error" in str(info.get("url")):
-                failures += 1
+                blocked += 1
                 results.append(Result(p, None, None, url, "blocked or load error"))
                 continue
-            failures = 0
+            blocked = 0
             seller = info.get("seller") or "Best Buy"
             first_party = "best buy" in seller.lower()
             price = float(info["price"]) if info.get("price") else None
@@ -115,7 +157,7 @@ def _browser_check(products: list[Product], cfg: Config, browser) -> list[Result
             note = "add-to-cart enabled" if in_stock else ("sold out" if info.get("soldOut") else ("coming soon" if info.get("comingSoon") else "no add-to-cart"))
             results.append(Result(p, in_stock, price, url, note, image))
         except Exception as e:  # noqa: BLE001
-            failures += 1
+            errors += 1
             results.append(Result(p, None, None, url, f"browser error: {e}"))
     return results
 

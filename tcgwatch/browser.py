@@ -11,12 +11,53 @@ import json
 import logging
 import shutil
 import subprocess
+import time
+
+import psutil
 
 from . import NO_WINDOW
 
 log = logging.getLogger("tcgwatch.browser")
 
 SESSION = "tcg"
+DAEMON_EXE = "agent-browser-win32-x64.exe"
+
+# Recycle limits. Measured 2026-09-21: the agent-browser daemon reached 4.6 GB after two days
+# and Best Buy pages pushed the watcher's Chrome to 9 GB; both ended in every command hanging.
+RECYCLE_AFTER_S = 6 * 3600
+DAEMON_CAP_MB = 1500
+CHROME_CAP_MB = 3000
+
+
+def _rss_mb(procs) -> int:
+    return sum(p.info["memory_info"].rss for p in procs if p.info.get("memory_info")) // (1024 * 1024)
+
+
+def _procs(name: str, cmd_contains: str | None = None) -> list:
+    out = []
+    for p in psutil.process_iter(["name", "cmdline", "memory_info"]):
+        try:
+            if (p.info["name"] or "").lower() != name.lower():
+                continue
+            if cmd_contains and cmd_contains.lower() not in " ".join(p.info["cmdline"] or []).lower():
+                continue
+            out.append(p)
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+    return out
+
+
+def _kill(procs, what: str) -> int:
+    n = 0
+    for p in procs:
+        try:
+            p.kill()
+            n += 1
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+    if n:
+        log.info("killed %d %s process(es)", n, what)
+    return n
 
 
 def js_str(s: str) -> str:
@@ -54,6 +95,7 @@ class Browser:
         self.exe = shutil.which("agent-browser")
         if not self.exe:
             raise BrowserError("agent-browser not found on PATH (npm install -g agent-browser)")
+        self.launched = time.time()
 
     def _base(self) -> list[str]:
         return [
@@ -65,7 +107,16 @@ class Browser:
             # Playwright-driven Chrome reports navigator.webdriver=true; PerimeterX (Walmart)
             # reads it and serves the "Robot or human?" page on the second load. This flag
             # flips it to false. Verified 2026-09-07.
-            "--args", "--disable-blink-features=AutomationControlled",
+            # Headed Chrome is required (Walmart/Target bot checks), but the window must not
+            # keep surfacing: each Best Buy product opens in a fresh tab, and a new tab restores
+            # a minimized window. Park it off-screen instead, and stop Chrome treating an
+            # occluded window as hidden so pages still render and timers still run.
+            "--args", ",".join([
+                "--disable-blink-features=AutomationControlled",
+                "--window-position=-32000,-32000",
+                "--disable-backgrounding-occluded-windows",
+                "--disable-renderer-backgrounding",
+            ]),
         ]
 
     _daemon_ready = False
@@ -87,6 +138,67 @@ class Browser:
         except subprocess.TimeoutExpired:
             log.warning("agent-browser daemon start timed out; continuing")
         Browser._daemon_ready = True
+        self.launched = time.time()
+        # After a recycle the `open about:blank` above can return before Chrome is up (seen
+        # 2026-09-21: Chrome RSS was 0 MB eight seconds later and the next command timed
+        # out). Poll until the browser answers so the first real check does not eat that.
+        deadline = time.time() + 90
+        while time.time() < deadline:
+            try:
+                if "about:blank" in self.run("get", "url", check=False):
+                    return
+            except BrowserError:
+                pass
+            time.sleep(3)
+        log.warning("browser did not answer within 90 s of daemon start; continuing")
+
+    # -- memory hygiene ------------------------------------------------------------------
+    def memory_mb(self) -> tuple[int, int]:
+        """(daemon RSS, this profile's Chrome RSS) in MB."""
+        return _rss_mb(_procs(DAEMON_EXE)), _rss_mb(_procs("chrome.exe", self.profile_dir))
+
+    def close(self) -> None:
+        """Close this session's Chrome and kill any Chrome still holding the profile.
+
+        A daemon that dies without closing its browser leaves that Chrome running for good
+        (20 such processes from a 9/15 launch were found on 2026-09-21), so the kill is not
+        optional. The daemon itself is shared by every agent-browser session on the machine
+        and is left alone here; see recycle().
+        """
+        try:
+            self.run("close", check=False)
+        except BrowserError as e:
+            log.warning("browser close: %s", e)
+        _kill(_procs("chrome.exe", self.profile_dir), "orphaned watcher Chrome")
+        Browser._daemon_ready = False
+
+    def recycle(self, reason: str) -> None:
+        """Restart the browser, and the daemon too when it has grown past DAEMON_CAP_MB.
+
+        Killing the daemon drops every other agent-browser session on the machine, so it
+        is done only on memory, never on the clock, and the log says so each time.
+        """
+        daemon_mb, chrome_mb = self.memory_mb()
+        log.info("browser recycle (%s): daemon %d MB, chrome %d MB", reason, daemon_mb, chrome_mb)
+        self.close()
+        if daemon_mb > DAEMON_CAP_MB:
+            log.warning("agent-browser daemon at %d MB (cap %d): killing it; other agent-browser sessions are dropped too",
+                        daemon_mb, DAEMON_CAP_MB)
+            _kill(_procs(DAEMON_EXE), "agent-browser daemon")
+            time.sleep(2)
+
+    def due_for_recycle(self) -> str | None:
+        """Why the browser should be recycled now, or None."""
+        if not Browser._daemon_ready:
+            return None
+        if time.time() - self.launched > RECYCLE_AFTER_S:
+            return "age"
+        daemon_mb, chrome_mb = self.memory_mb()
+        if daemon_mb > DAEMON_CAP_MB:
+            return f"daemon {daemon_mb} MB"
+        if chrome_mb > CHROME_CAP_MB:
+            return f"chrome {chrome_mb} MB"
+        return None
 
     def run(self, *args: str, check: bool = True) -> str:
         self._ensure_daemon()
@@ -223,5 +335,3 @@ class Browser:
                 return None
         return res
 
-    def close(self) -> None:
-        self.run("close", check=False)

@@ -41,6 +41,39 @@ class Blocked(RuntimeError):
     pass
 
 
+# A 403 here is the edge rejecting this IP, not a per-product fact, so the whole retailer
+# pauses and the pause doubles while it keeps happening. It is saved to disk because the
+# process forgets it on restart: Target carries the same mechanism after five restarts in an
+# hour each re-polled it and held its block open for 40+ minutes (2026-09-07), and the same
+# thing happened here on 2026-09-22 during a run of watcher restarts.
+BLOCK_BACKOFF_S = 900
+BLOCK_BACKOFF_MAX_S = 4 * 3600
+_block = {"until": 0.0, "backoff": BLOCK_BACKOFF_S, "loaded": False}
+
+
+def _block_file(cfg: Config):
+    return cfg.data_dir / "gamestop_block.json"
+
+
+def _load_block(cfg: Config) -> None:
+    if _block["loaded"]:
+        return
+    _block["loaded"] = True
+    try:
+        saved = json.loads(_block_file(cfg).read_text(encoding="utf-8"))
+        _block["until"] = float(saved.get("until", 0.0))
+        _block["backoff"] = int(saved.get("backoff", BLOCK_BACKOFF_S))
+    except (OSError, ValueError):
+        pass
+
+
+def _save_block(cfg: Config) -> None:
+    try:
+        _block_file(cfg).write_text(json.dumps({"until": _block["until"], "backoff": _block["backoff"]}), encoding="utf-8")
+    except OSError:
+        pass
+
+
 def _get(params: dict) -> tuple[int, str, str]:
     """(status, content-type, body). GameStop's edge rejects Python's TLS fingerprint with a 403
     while curl and Chrome pass (verified 2026-09-07), so impersonate Chrome via curl_cffi, or fall
@@ -104,6 +137,10 @@ def _parse(p: dict) -> tuple[bool, float | None, str, str | None]:
 
 
 def check(products: list[Product], cfg: Config, browser=None) -> list[Result]:
+    _load_block(cfg)
+    if time.time() < _block["until"]:
+        left = int((_block["until"] - time.time()) / 60) + 1
+        return [Result(p, None, None, product_url(p), f"blocked, {left} min left") for p in products]
     results: list[Result] = []
     for i, p in enumerate(products):
         url = product_url(p)
@@ -112,8 +149,13 @@ def check(products: list[Product], cfg: Config, browser=None) -> list[Result]:
         try:
             prod = _fetch(p.id)
         except Blocked as e:
-            # One block means the whole round is burned; do not keep hitting the host.
-            log.warning("gamestop blocked (%s) at %s; skipping the rest this round", e, p.id)
+            # One block means the whole round is burned, and retrying on the next round would
+            # hold it open; pause the retailer instead.
+            pause = _block["backoff"]
+            _block["until"] = time.time() + pause
+            _block["backoff"] = min(pause * 2, BLOCK_BACKOFF_MAX_S)
+            _save_block(cfg)
+            log.warning("gamestop blocked (%s) at %s; pausing GameStop for %d min", e, p.id, pause // 60)
             results.append(Result(p, None, None, url, str(e)))
             for rest in products[len(results):]:
                 results.append(Result(rest, None, None, product_url(rest), f"{e} (skipped)"))
@@ -126,6 +168,11 @@ def check(products: list[Product], cfg: Config, browser=None) -> list[Result]:
             continue
         in_stock, price, note, image = _parse(prod)
         results.append(Result(p, in_stock, price, url, note, image))
+    else:
+        # A round that finished without a block clears the escalation.
+        if _block["backoff"] != BLOCK_BACKOFF_S:
+            _block["backoff"] = BLOCK_BACKOFF_S
+            _save_block(cfg)
     return results
 
 

@@ -7,7 +7,7 @@ Phone alert the moment a Pokemon, One Piece or Riftbound TCG product comes back 
 1. In Discord, create a private server with a `#drops` channel. Channel settings > Integrations > Webhooks > New Webhook > Copy Webhook URL. Paste it into `config.yaml` under `discord_webhook`. In the Discord mobile app, set that channel's notifications to All Messages.
 2. Run `python watch.py --test`. A message should land in `#drops` and buzz your phone.
 3. Make sure you are signed in to Target, Best Buy, and Walmart in your normal browser. That is where drops open.
-4. Optional: get a free key at developer.bestbuy.com and paste it into `config.local.yaml` as `bestbuy_api_key`. Without it Best Buy is checked by loading pages in the background browser, which is slower.
+4. Optional: get a free key at developer.bestbuy.com and paste it into `config.local.yaml` as `bestbuy_api_key`. Without it Best Buy is checked by loading pages in the background browser, which is slower (about 13 minutes for 32 products).
 5. Add products to `config.yaml`. Confirm each ID first:
 
 ```
@@ -119,8 +119,25 @@ hasn't mirrored) or a request to it fails.
 - `config.yaml` products, feeds, intervals, topic.
 - `~/.tcg-watch/` state, rotating log, Chrome profile.
 
+## Two poll lanes
+
+Browser retailers (Target, Walmart, Pokemon Center, Sam's Club, and Best Buy without an API key) share one Chrome, so they poll one at a time on the main thread. Everything else (GameStop, Riot merch, TCGplayer, and the Reddit feeds) polls on a second thread.
+
+They were one loop until 2026-09-21, and the browser passes starved everything behind them. Median actual interval against configured, over four days of log:
+
+| Retailer | Configured | Was | Lane |
+|---|---|---|---|
+| gamestop | 180s | 702s | direct |
+| target | 90s | 403s | browser |
+| riotmerch | 300s | 920s | direct |
+| walmart | 600s | 1150s | browser |
+
+GameStop needs no browser and is the retailer most often in stock, so it paid the most for waiting behind a 33-page Best Buy pass.
+
 ## Known limits
 
 - The PC must be awake. A scheduled task at logon keeps the watcher running; sleep pauses it.
 - Retailer sites change. When a check starts returning `None` for every product, the endpoint or page shape moved. Look at `watch.log`.
 - Auto-checkout is deliberately not implemented. It violates retailer terms and gets accounts banned.
+- The browser leaks. A Best Buy page holds a ~4.6 GB Chrome renderer that only closing its tab releases, and the agent-browser daemon grew to 4.6 GB in two days (2026-09-21). The watcher therefore opens each Best Buy product in its own tab, restarts its Chrome every 6 hours or past 3 GB, and kills the daemon past 1.5 GB. Killing the daemon drops every other agent-browser session on the machine; the log says when it happens. Needs `pip install psutil`. Watch `browser memory:` lines in `watch.log`.
+- The watcher's Chrome window is parked off-screen (`--window-position=-32000,-32000`). Minimizing it does not work: every new tab restores the window.

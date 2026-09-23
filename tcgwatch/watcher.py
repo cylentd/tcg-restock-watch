@@ -31,6 +31,9 @@ class Watcher:
         self.cfg = cfg
         self.state = State(cfg.data_dir / "state.json")
         self.browser: Browser | None = None
+        # Two poll threads can both reach get_browser() (the direct lane only when
+        # cart_mode is "auto"), and two Browser objects would mean two recycle clocks.
+        self._browser_lock = threading.Lock()
         self.next_due: dict[str, float] = {r: 0.0 for r in cfg.retailers}
         self.feed_due = 0.0
         self.feed_rules = [feeds_mod.FeedRule(f.subreddit, f.keywords, f.exclude) for f in cfg.feeds]
@@ -47,17 +50,16 @@ class Watcher:
 
     # -- browser -------------------------------------------------------------------------
     def needs_browser(self) -> bool:
-        return self.cfg.cart_mode == "auto" or any(
-            r in USES_BROWSER or (r == "bestbuy" and not self.cfg.bestbuy_api_key) for r in self.cfg.retailers
-        )
+        return self.cfg.cart_mode == "auto" or any(self.uses_browser(r) for r in self.cfg.retailers)
 
     def get_browser(self) -> Browser | None:
-        if self.browser is None and self.needs_browser():
-            try:
-                self.browser = Browser(self.cfg.chrome_path, self.cfg.profile_dir)
-            except BrowserError as e:
-                log.error("%s", e)
-        return self.browser
+        with self._browser_lock:
+            if self.browser is None and self.needs_browser():
+                try:
+                    self.browser = Browser(self.cfg.chrome_path, self.cfg.profile_dir)
+                except BrowserError as e:
+                    log.error("%s", e)
+            return self.browser
 
     # -- alerts --------------------------------------------------------------------------
     def alert(self, title: str, body: str, url: str | None = None, priority: str = "high", tags: str = "shopping_cart"):
@@ -268,14 +270,45 @@ class Watcher:
         return hits
 
     # -- loop ----------------------------------------------------------------------------
+    def uses_browser(self, retailer: str) -> bool:
+        return retailer in USES_BROWSER or (retailer == "bestbuy" and not self.cfg.bestbuy_api_key)
+
     def run_retailer(self, retailer: str) -> list[Result]:
         products = self.active_products(retailer)
-        browser = self.get_browser() if (retailer in USES_BROWSER or (retailer == "bestbuy" and not self.cfg.bestbuy_api_key)) else None
+        browser = self.get_browser() if self.uses_browser(retailer) else None
         try:
             return get_checker(retailer)(products, self.cfg, browser)
         except Exception as e:  # noqa: BLE001
             log.warning("%s check failed: %s", retailer, e)
             return []
+
+    def poll_due(self, retailers: list[str]) -> None:
+        """One pass for each retailer in this lane whose interval has elapsed."""
+        for retailer in retailers:
+            if time.time() < self.next_due[retailer]:
+                continue
+            for res in self.run_retailer(retailer):
+                self.handle(res)
+            self.next_due[retailer] = time.time() + self.cfg.intervals[retailer] * random.uniform(0.85, 1.15)
+
+    def run_direct_loop(self, retailers: list[str]) -> None:
+        """Retailers that need no browser, plus the Reddit feeds, on their own thread.
+
+        A browser pass takes minutes (Walmart is 35 page loads, Best Buy 33), and one loop
+        for everything made every other retailer wait behind it. Measured over four days of
+        log on 2026-09-21, against the configured interval: GameStop 702 s (180 s), Target
+        403 s (90 s), riotmerch 920 s (300 s). GameStop needs no browser and is the one
+        retailer that regularly has stock, so the starvation fell exactly where it cost most.
+        """
+        while True:
+            try:
+                self.poll_due(retailers)
+                if self.feed_rules and time.time() >= self.feed_due:
+                    self.run_feeds()
+                    self.feed_due = time.time() + self.cfg.feed_interval * random.uniform(0.85, 1.15)
+            except Exception as e:  # noqa: BLE001
+                log.warning("direct lane: %s", e)
+            time.sleep(2)
 
     def run_once(self) -> list[Result]:
         out = []
@@ -289,17 +322,29 @@ class Watcher:
                  {r: self.cfg.intervals[r] for r in self.cfg.retailers}, len(self.feed_rules), self.cfg.feed_interval)
         if self.cfg.market:
             threading.Thread(target=self.run_market_loop, name="market", daemon=True).start()
+        # Browser retailers share one Chrome and stay serialized here; everything else polls
+        # on its own thread so it never waits behind a multi-minute page-loading pass.
+        browser_lane = [r for r in self.cfg.retailers if self.uses_browser(r)]
+        direct_lane = [r for r in self.cfg.retailers if not self.uses_browser(r)]
+        log.info("lanes: browser %s, direct %s", browser_lane, direct_lane)
+        if direct_lane or self.feed_rules:
+            threading.Thread(target=self.run_direct_loop, args=(direct_lane,), name="direct", daemon=True).start()
+        b = self.get_browser()
+        if b:
+            # A previous run's browser (and possibly a bloated daemon) may still be up.
+            b.recycle("startup")
+        # Start the clock now: a memory reading taken before the first command has relaunched
+        # Chrome reads 0 MB and says nothing.
+        memory_logged = time.time()
         while True:
-            now = time.time()
-            for retailer in self.cfg.retailers:
-                if now < self.next_due[retailer]:
-                    continue
-                for res in self.run_retailer(retailer):
-                    self.handle(res)
-                base = self.cfg.intervals[retailer]
-                self.next_due[retailer] = time.time() + base * random.uniform(0.85, 1.15)
-            if self.feed_rules and now >= self.feed_due:
-                self.run_feeds()
-                self.feed_due = time.time() + self.cfg.feed_interval * random.uniform(0.85, 1.15)
+            # Between passes only: a recycle mid-pass would pull the tab out from under a check.
+            if b:
+                reason = b.due_for_recycle()
+                if reason:
+                    b.recycle(reason)
+                elif time.time() - memory_logged > 3600:
+                    log.info("browser memory: daemon %d MB, chrome %d MB", *b.memory_mb())
+                    memory_logged = time.time()
+            self.poll_due(browser_lane)
             self.maybe_deploy_site()
             time.sleep(2)
