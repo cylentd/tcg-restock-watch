@@ -26,7 +26,7 @@ DAEMON_EXE = "agent-browser-win32-x64.exe"
 # and Best Buy pages pushed the watcher's Chrome to 9 GB; both ended in every command hanging.
 RECYCLE_AFTER_S = 6 * 3600
 DAEMON_CAP_MB = 1500
-CHROME_CAP_MB = 3000
+CHROME_CAP_MB = 2000
 
 
 def _rss_mb(procs) -> int:
@@ -187,18 +187,26 @@ class Browser:
             _kill(_procs(DAEMON_EXE), "agent-browser daemon")
             time.sleep(2)
 
-    def due_for_recycle(self) -> str | None:
-        """Why the browser should be recycled now, or None."""
+    def over_memory_cap(self) -> str | None:
+        """Why the browser is over a memory cap right now, or None. No age check: this is
+        meant to be called often, including mid-pass after a tab closes, where the clock
+        alone would never fire."""
         if not Browser._daemon_ready:
             return None
-        if time.time() - self.launched > RECYCLE_AFTER_S:
-            return "age"
         daemon_mb, chrome_mb = self.memory_mb()
         if daemon_mb > DAEMON_CAP_MB:
             return f"daemon {daemon_mb} MB"
         if chrome_mb > CHROME_CAP_MB:
             return f"chrome {chrome_mb} MB"
         return None
+
+    def due_for_recycle(self) -> str | None:
+        """Why the browser should be recycled now, or None. Between-pass check: also covers age."""
+        if not Browser._daemon_ready:
+            return None
+        if time.time() - self.launched > RECYCLE_AFTER_S:
+            return "age"
+        return self.over_memory_cap()
 
     def run(self, *args: str, check: bool = True) -> str:
         self._ensure_daemon()

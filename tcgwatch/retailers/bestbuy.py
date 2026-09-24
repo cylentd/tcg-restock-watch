@@ -159,6 +159,13 @@ def _browser_check(products: list[Product], cfg: Config, browser) -> list[Result
         except Exception as e:  # noqa: BLE001
             errors += 1
             results.append(Result(p, None, None, url, f"browser error: {e}"))
+        # A fresh tab per product still lets Chrome's own RSS climb past the cap inside a
+        # single pass (measured 2026-09-21: ~3.4 GB mid-Best Buy, above the old 3000 MB cap
+        # that only fired between passes). Check right after each tab close and recycle
+        # here too, so a 32-product pass cannot outrun the cap before the next pass starts.
+        reason = browser.over_memory_cap()
+        if reason:
+            browser.recycle(f"mid-pass: {reason}")
     return results
 
 
