@@ -28,6 +28,11 @@ intervals:
   # the actual pricing cadence is market_interval below, not this.
   riotmerch: 300
   tcgplayer: 3600
+  # Both load in the watcher's Chrome, one product page at a time. Imperva (Pokemon Center)
+  # and PerimeterX (Sam's Club) punish fast refreshes, so keep these slow; a Pokemon Center
+  # drop puts you in a queue anyway, where 5 minutes late still means a place in line.
+  pokemoncenter: 300
+  samsclub: 600
 
 # Alert but do NOT open the page when price exceeds msrp * max_price_ratio.
 max_price_ratio: 1.10
@@ -128,7 +133,11 @@ feeds:
 #   target        TCIN, the number after "A-" in the URL
 #   bestbuy       SKU, the number after "/sku/" or "skuId=" in the URL (or give the full url)
 #   walmart       item ID, the number at the end of the /ip/... URL
-#   pokemoncenter NOT pollable (Imperva blocks automated browsers); covered by the feeds above
+#   gamestop      item ID, the number before ".html" in the product URL
+#   pokemoncenter SKU, the "10-XXXXX-XXX" segment after /product/ in the URL. Pollable since
+#                 2026-09-08 (product pages load clean; only the homepage stalls). --lookup
+#                 does not support it, so paste the ID from the product URL.
+#   samsclub      item ID, the number at the end of the /ip/... URL
 #   (--lookup target also runs through the watcher's Chrome, so it opens a window)
 products:
   # ---- Target: Pokemon (Target does not sell One Piece itself, only marketplace) ----
@@ -289,6 +298,34 @@ products:
   - {retailer: riotmerch, id: "riftbound-origins-booster-display", name: "Riftbound Origins Booster Display", msrp: 120}
   - {retailer: riotmerch, id: "riftbound-spiritforged-booster-display", name: "Riftbound Spiritforged Booster Display", msrp: 120}
   - {retailer: riotmerch, id: "riftbound-vendetta-booster-display", name: "Riftbound Vendetta Booster Display", msrp: 120}
+
+  # ---- Pokemon Center (pokemoncenter.com): first party only, never a marketplace, always at
+  #      MSRP. The Pokemon Center ETBs are store exclusives with different contents from the
+  #      retail ETBs tracked above, so they do NOT group with them. Alert only, no auto-cart:
+  #      a hyped drop puts you in a Queue-it waiting room and the check reports "queue active"
+  #      as in stock so the alert opens the page and you join the line by hand.
+  #      IDs read from product URLs on 2026-09-08; MSRP left unset where the price was not
+  #      confirmed on the page itself, since an unset MSRP only weakens the verdict while a
+  #      wrong one corrupts it. ----
+  - {retailer: pokemoncenter, id: "10-10399-112", name: "Pokemon Center Mega Evolution Chaos Rising Elite Trainer Box", msrp: 59.99}
+  - {retailer: pokemoncenter, id: "10-10315-108", name: "Pokemon Center Mega Evolution Ascended Heroes Elite Trainer Box", msrp: 59.99}
+  - {retailer: pokemoncenter, id: "10-10372-109", name: "Pokemon Center Mega Evolution Perfect Order Elite Trainer Box", msrp: 59.99}
+  - {retailer: pokemoncenter, id: "10-10416-112", name: "Pokemon Center Mega Evolution Pitch Black Elite Trainer Box", msrp: 59.99}
+  - {retailer: pokemoncenter, id: "10-10186-109", name: "Pokemon Center Mega Evolution Phantasmal Flames Elite Trainer Box", msrp: 59.99}
+  - {retailer: pokemoncenter, id: "10-10047-108", name: "Pokemon Center Mega Evolution Elite Trainer Box (Mega Lucario)", msrp: 59.99}
+  - {retailer: pokemoncenter, id: "10-10047-120", name: "Pokemon Center Mega Evolution Elite Trainer Box (Mega Gardevoir)", msrp: 59.99}
+  - {retailer: pokemoncenter, id: "10-10447-111", name: "Pokemon Center 30th Celebration Elite Trainer Box", msrp: 59.99}
+  - {retailer: pokemoncenter, id: "10-10451-115", name: "Pokemon 30th Celebration Booster Bundle"}
+  - {retailer: pokemoncenter, id: "10-10465-176", name: "Pokemon 30th Celebration Mini Tins (10-Pack)"}
+  - {retailer: pokemoncenter, id: "10-10667-101", name: "Pokemon 30th Celebration Knock Out Collection"}
+
+  # ---- Sam's Club (samsclub.com): first party, membership required to buy. JSON-LD stock,
+  #      verified 2026-09-08 (tcgwatch/retailers/samsclub.py). A delisted item 302s to the
+  #      storefront root and the checker retires it as "delisted (redirected)", so a stale ID
+  #      is self-reporting rather than silently wrong. These IDs came from search indexes,
+  #      not from the live site, so expect some to retire on the first cycle. ----
+  - {retailer: samsclub, id: "17210852415", name: "Pokemon Elite Trainer Box + Poke Ball (Sam's Club)"}
+  - {retailer: samsclub, id: "15304308064", name: "Pokemon Mew Elite Trainer Box + 6 Bonus Cards (Sam's Club)"}
 
   # ---- Price-only watch (item 4): Pokemon Booster Boxes. No retailer here sells the actual
   #      36-pack box (only bundles/ETBs/tins above); this reports in_stock=None always (no
