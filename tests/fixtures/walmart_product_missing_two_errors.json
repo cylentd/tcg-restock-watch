@@ -1,0 +1,14 @@
+{
+  "_note": "hand-built: Walmart answered with no product and two errors; the first error names the cause",
+  "props": {
+    "pageProps": {
+      "initialData": {
+        "data": null,
+        "errors": [
+          {"extensions": {"type": "NOT_FOUND"}},
+          {"extensions": {"type": "SECOND_ERROR"}}
+        ]
+      }
+    }
+  }
+}

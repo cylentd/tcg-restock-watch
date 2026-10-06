@@ -1,0 +1,20 @@
+{
+  "_note": "hand-built: third-party seller whose name merely contains Walmart, no sellerType",
+  "props": {
+    "pageProps": {
+      "initialData": {
+        "data": {
+          "product": {
+            "availabilityStatus": "IN_STOCK",
+            "priceInfo": {
+              "currentPrice": {
+                "price": 349.0
+              }
+            },
+            "sellerName": "Walmart Deals"
+          }
+        }
+      }
+    }
+  }
+}

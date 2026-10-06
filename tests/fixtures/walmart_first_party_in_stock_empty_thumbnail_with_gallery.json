@@ -1,0 +1,32 @@
+{
+  "_note": "hand-built: thumbnailUrl is an empty string, gallery has two images",
+  "props": {
+    "pageProps": {
+      "initialData": {
+        "data": {
+          "product": {
+            "availabilityStatus": "IN_STOCK",
+            "priceInfo": {
+              "currentPrice": {
+                "price": 49.99
+              }
+            },
+            "sellerName": "Walmart.com",
+            "sellerType": "INTERNAL",
+            "imageInfo": {
+              "thumbnailUrl": "",
+              "allImages": [
+                {
+                  "url": "https://img.test/gallery-1.jpg"
+                },
+                {
+                  "url": "https://img.test/gallery-2.jpg"
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

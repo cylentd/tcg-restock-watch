@@ -1,0 +1,16 @@
+{
+  "_note": "hand-built: seller name WALMART.COM (upper case) with no sellerType field at all",
+  "props": {
+    "pageProps": {
+      "initialData": {
+        "data": {
+          "product": {
+            "availabilityStatus": "IN_STOCK",
+            "sellerName": "WALMART.COM",
+            "priceInfo": {"currentPrice": {"price": 49.99}}
+          }
+        }
+      }
+    }
+  }
+}

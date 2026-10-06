@@ -1,0 +1,20 @@
+{
+  "_note": "hand-built: seller name exactly walmart (lower case), no sellerType",
+  "props": {
+    "pageProps": {
+      "initialData": {
+        "data": {
+          "product": {
+            "availabilityStatus": "IN_STOCK",
+            "priceInfo": {
+              "currentPrice": {
+                "price": 49.99
+              }
+            },
+            "sellerName": "walmart"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "_note": "hand-built: Walmart sells it, in stock, no thumbnail, a two-image gallery",
+  "props": {
+    "pageProps": {
+      "initialData": {
+        "data": {
+          "product": {
+            "availabilityStatus": "IN_STOCK",
+            "sellerName": "Walmart.com",
+            "sellerType": "INTERNAL",
+            "priceInfo": {"currentPrice": {"price": 49.99}},
+            "imageInfo": {
+              "allImages": [
+                {"url": "https://img.test/gallery-1.jpg"},
+                {"url": "https://img.test/gallery-2.jpg"}
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

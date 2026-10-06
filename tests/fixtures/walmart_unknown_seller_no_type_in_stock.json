@@ -1,0 +1,16 @@
+{
+  "_note": "hand-built: IN_STOCK from a named third-party seller, sellerType field missing",
+  "props": {
+    "pageProps": {
+      "initialData": {
+        "data": {
+          "product": {
+            "availabilityStatus": "IN_STOCK",
+            "sellerName": "ScalperCo",
+            "priceInfo": {"currentPrice": {"price": 349.00}}
+          }
+        }
+      }
+    }
+  }
+}

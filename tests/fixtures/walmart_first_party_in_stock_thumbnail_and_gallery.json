@@ -1,0 +1,25 @@
+{
+  "_note": "hand-built: Walmart sells it, in stock, with a thumbnail and a two-image gallery",
+  "props": {
+    "pageProps": {
+      "initialData": {
+        "data": {
+          "product": {
+            "name": "Pokemon Elite Trainer Box",
+            "availabilityStatus": "IN_STOCK",
+            "sellerName": "Walmart.com",
+            "sellerType": "INTERNAL",
+            "priceInfo": {"currentPrice": {"price": 49.99}},
+            "imageInfo": {
+              "thumbnailUrl": "https://img.test/thumb.jpg",
+              "allImages": [
+                {"url": "https://img.test/gallery-1.jpg"},
+                {"url": "https://img.test/gallery-2.jpg"}
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

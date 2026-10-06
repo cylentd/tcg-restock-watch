@@ -70,6 +70,49 @@ class WalmartBrowser:
         return self._next_data
 
 
+class ScriptedWalmartBrowser:
+    """A Walmart browser that serves one scripted page per open(), and records what it was asked.
+
+    Each page is a dict: "data" (the __NEXT_DATA__ blob or None), "url", "title" (what the tab shows)
+    and "error" (an exception open() raises instead of loading).
+    """
+
+    def __init__(self, pages: list[dict], events: list | None = None):
+        self.pages = pages
+        self.events = events  # optional shared log; each open() adds ("open", url)
+        self.opened: list[str] = []
+        self.waits: list[int] = []
+
+    @property
+    def _page(self) -> dict:
+        if not self.opened:
+            raise AssertionError("ScriptedWalmartBrowser: read the tab before open() was called")
+        if len(self.opened) > len(self.pages):
+            raise AssertionError(
+                f"ScriptedWalmartBrowser: open() call {len(self.opened)} but only {len(self.pages)} pages scripted"
+            )
+        return self.pages[len(self.opened) - 1]
+
+    def open(self, url):
+        self.opened.append(url)
+        if self.events is not None:
+            self.events.append(("open", url))
+        if self._page.get("error"):
+            raise self._page["error"]
+
+    def wait(self, ms):
+        self.waits.append(ms)
+
+    def url(self):
+        return self._page.get("url")
+
+    def title(self):
+        return self._page.get("title")
+
+    def next_data(self):
+        return self._page.get("data")
+
+
 class TargetBrowser:
     """Stands in for the Browser's fetch_json as target.check uses it: the stock summary, then the price call."""
 

@@ -1,0 +1,17 @@
+{
+  "_note": "hand-built: sellerType EXTERNAL but the seller name is Walmart.com",
+  "props": {
+    "pageProps": {
+      "initialData": {
+        "data": {
+          "product": {
+            "availabilityStatus": "IN_STOCK",
+            "sellerName": "Walmart.com",
+            "sellerType": "EXTERNAL",
+            "priceInfo": {"currentPrice": {"price": 49.99}}
+          }
+        }
+      }
+    }
+  }
+}

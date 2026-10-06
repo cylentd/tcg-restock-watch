@@ -1,0 +1,17 @@
+{
+  "_note": "hand-built: sellerType INTERNAL (Walmart itself) under a seller name that is not Walmart.com",
+  "props": {
+    "pageProps": {
+      "initialData": {
+        "data": {
+          "product": {
+            "availabilityStatus": "IN_STOCK",
+            "sellerName": "Walmart Fulfillment Services",
+            "sellerType": "INTERNAL",
+            "priceInfo": {"currentPrice": {"price": 49.99}}
+          }
+        }
+      }
+    }
+  }
+}

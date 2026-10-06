@@ -1,0 +1,10 @@
+{
+  "_note": "hand-built: initialData has a data block but no product and no errors list",
+  "props": {
+    "pageProps": {
+      "initialData": {
+        "data": {}
+      }
+    }
+  }
+}
