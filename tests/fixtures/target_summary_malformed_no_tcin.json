@@ -1,0 +1,11 @@
+{
+  "_note": "hand-built, not a recorded answer: a Target summary entry that says IN_STOCK but carries no tcin",
+  "data": {
+    "product_summaries": [
+      {
+        "fulfillment": {"shipping_options": {"availability_status": "IN_STOCK"}},
+        "item": {"fulfillment": {"is_marketplace": false}}
+      }
+    ]
+  }
+}

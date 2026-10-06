@@ -1,0 +1,11 @@
+{
+  "_note": "hand-built, not a recorded answer: a Best Buy page read that shows an enabled Add to Cart but has no url, so the tab never left about:blank",
+  "hasButton": true,
+  "enabled": true,
+  "label": "Add to Cart",
+  "seller": "Best Buy",
+  "price": "49.99",
+  "soldOut": false,
+  "comingSoon": false,
+  "blocked": false
+}

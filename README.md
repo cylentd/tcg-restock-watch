@@ -56,9 +56,16 @@ Each product carries an `msrp`. A listing above `msrp * max_price_ratio` (defaul
 
 Alerts go to the Discord webhook, and also to an ntfy.sh topic if `ntfy_topic` is set.
 
-- **IN STOCK: name** with the price verdict and the store link. Pings @everyone so it breaks through "Mentions only". On the PC the page is already open.
+- **IN STOCK: name** with the price verdict and the store link. At an acceptable price it pings @everyone so it breaks through "Mentions only", and on the PC the page is already open. An INFLATED listing alerts without the ping: an overpriced restock is not worth waking the phone.
 - **Walmart wants a captcha** when the "Robot or human?" page appears. Solve it in the watcher's Chrome window. Sent at most every 30 min.
 - **r/subreddit new post** for feed keyword hits.
+
+### When an alert fires
+
+- **Only on a restock.** An item alerts when it goes from out of stock to in stock. A second poll that finds it still in stock sends nothing; the first ping already said so (2026-09-07).
+- **Feed posts up to 1 hour old.** An older post that matches is marked seen but not alerted.
+- **First look at a subreddit is silent.** The first fetch of a subreddit marks its posts seen and alerts on none, so a restart does not replay the last day of posts.
+- **A rate-limited subreddit pauses; the others keep polling.** On the public RSS feed a 429 pauses it 10 minutes. On the Reddit API it pauses as long as Reddit's `x-ratelimit-reset` header says (60 s when the header is missing), and it pauses early, before any 429, once fewer than 5 requests are left in the window.
 
 ## Status page
 
@@ -139,5 +146,5 @@ GameStop needs no browser and is the retailer most often in stock, so it paid th
 - The PC must be awake. A scheduled task at logon keeps the watcher running; sleep pauses it.
 - Retailer sites change. When a check starts returning `None` for every product, the endpoint or page shape moved. Look at `watch.log`.
 - Auto-checkout is deliberately not implemented. It violates retailer terms and gets accounts banned.
-- The browser leaks. A Best Buy page holds a ~4.6 GB Chrome renderer that only closing its tab releases, and the agent-browser daemon grew to 4.6 GB in two days (2026-09-21). The watcher therefore opens each Best Buy product in its own tab, restarts its Chrome every 6 hours or past 3 GB, and kills the daemon past 1.5 GB. Killing the daemon drops every other agent-browser session on the machine; the log says when it happens. Needs `pip install psutil`. Watch `browser memory:` lines in `watch.log`.
+- The browser leaks. A Best Buy page holds a ~4.6 GB Chrome renderer that only closing its tab releases, and the agent-browser daemon grew to 4.6 GB in two days (2026-09-21). The watcher therefore opens each Best Buy product in its own tab, restarts its Chrome every 6 hours or past 2 GB (checked after each Best Buy tab close too), and kills the daemon past 1.5 GB. Killing the daemon drops every other agent-browser session on the machine; the log says when it happens. Needs `pip install psutil`. Watch `browser memory:` lines in `watch.log`.
 - The watcher's Chrome window is parked off-screen (`--window-position=-32000,-32000`). Minimizing it does not work: every new tab restores the window.

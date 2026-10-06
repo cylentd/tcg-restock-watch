@@ -1,0 +1,11 @@
+{
+  "data": {
+    "product_summaries": [
+      {
+        "tcin": "222",
+        "fulfillment": {"shipping_options": {"availability_status": "IN_STOCK"}},
+        "item": {"fulfillment": {"is_marketplace": true}}
+      }
+    ]
+  }
+}

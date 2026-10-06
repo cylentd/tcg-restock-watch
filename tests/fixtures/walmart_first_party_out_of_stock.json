@@ -1,0 +1,17 @@
+{
+  "props": {
+    "pageProps": {
+      "initialData": {
+        "data": {
+          "product": {
+            "availabilityStatus": "OUT_OF_STOCK",
+            "sellerName": "Walmart.com",
+            "sellerId": "F55CDC31AB754BB68FE0B39041159D63",
+            "sellerType": "INTERNAL",
+            "priceInfo": {"currentPrice": {"price": 49.99}}
+          }
+        }
+      }
+    }
+  }
+}

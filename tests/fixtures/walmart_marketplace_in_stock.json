@@ -1,0 +1,17 @@
+{
+  "props": {
+    "pageProps": {
+      "initialData": {
+        "data": {
+          "product": {
+            "availabilityStatus": "IN_STOCK",
+            "sellerName": "ScalperCo",
+            "sellerId": "A1B2C3D4E5F60718293A4B5C6D7E8F90",
+            "sellerType": "EXTERNAL",
+            "priceInfo": {"currentPrice": {"price": 349.00}}
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "url": "https://www.bestbuy.com/site/pokemon-etb/6600001.p",
+  "hasButton": true,
+  "enabled": false,
+  "label": "Sold Out",
+  "seller": "Best Buy",
+  "price": "49.99",
+  "soldOut": true,
+  "comingSoon": false,
+  "blocked": false
+}

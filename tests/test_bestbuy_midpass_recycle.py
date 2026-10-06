@@ -8,52 +8,11 @@ or Chrome process is needed.
 
 from __future__ import annotations
 
-import time
-
 import pytest
 
 from tcgwatch.config import Product
 from tcgwatch.retailers import bestbuy
-
-
-class FakeBrowser:
-    """Minimal stand-in for tcgwatch.browser.Browser covering what _load()/_browser_check use."""
-
-    def __init__(self, page_info, over_cap_after: int | None = None):
-        self.page_info = page_info
-        self.over_cap_after = over_cap_after  # recycle should fire once calls reach this count
-        self.calls = 0
-        self.recycle_calls: list[str] = []
-        self.tab_closes = 0
-
-    def run(self, *args, check=True):
-        if args[:2] == ("tab", "close"):
-            self.tab_closes += 1
-        return ""
-
-    def goto(self, url):
-        return None
-
-    def wait(self, ms):
-        return None
-
-    def eval_json(self, js):
-        return self.page_info
-
-    def over_memory_cap(self):
-        self.calls += 1
-        if self.over_cap_after is not None and self.calls >= self.over_cap_after:
-            return f"chrome {bestbuy_cap_mb() + 1} MB"
-        return None
-
-    def recycle(self, reason):
-        self.recycle_calls.append(reason)
-
-
-def bestbuy_cap_mb() -> int:
-    from tcgwatch import browser as browser_mod
-
-    return browser_mod.CHROME_CAP_MB
+from tests.builders import FakeBrowser
 
 
 def _products(n: int) -> list[Product]:
@@ -90,8 +49,7 @@ def test_midpass_recycle_fires_after_tab_close_when_over_cap():
     results = bestbuy._browser_check(products, cfg, browser)
 
     assert len(results) == 3
-    assert browser.recycle_calls, "expected at least one mid-pass recycle"
-    assert all("mid-pass" in r for r in browser.recycle_calls)
+    assert len(browser.recycle_calls) == 1, f"one recycle after product 1, then under the cap: {browser.recycle_calls}"
     # It checked memory after every tab close, not just once.
     assert browser.calls == 3
     assert browser.tab_closes == 3

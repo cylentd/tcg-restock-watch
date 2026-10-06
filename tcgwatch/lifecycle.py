@@ -43,7 +43,7 @@ import re
 # Product type weight, by name. Sealed volume and collector sets hold value; decks, tins and
 # blisters are high-supply, low-demand and resell near MSRP (David's research, 2026-09-07).
 _TYPE_WEIGHTS = (
-    (re.compile(r"booster box|booster display|special collection|super[- ]premium|ultra[- ]premium|illustration box", re.I), 1.3),
+    (re.compile(r"booster box|booster display|special collection|premium collection|super[- ]premium|ultra[- ]premium|illustration box", re.I), 1.3),
     (re.compile(r"elite trainer|\betb\b", re.I), 1.2),
     (re.compile(r"blister|\btins?\b|poster|sticker|adventure chest", re.I), 0.8),
     (re.compile(r"battle deck|starter deck|deck set|ultra deck|league battle|gift box", re.I), 0.6),

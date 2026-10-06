@@ -6,7 +6,7 @@ This repo also keeps a detailed roadmap at [docs/ROADMAP.md](../ROADMAP.md) — 
 
 | Thread | Branch | Status | Next action | Touched |
 |---|---|---|---|---|
-| _(none active)_ | | | | |
+| Test backlog (validator pass 2026-10-06, 8 minors) | — | open | Record real retailer answers to replace the hand-built `tests/fixtures/`; move `read_walmart_page` into `tests/builders.py`; parametrize the two @everyone tests; tidy `test_bestbuy_midpass_recycle.py` (private call, `object.__new__`); restore `Browser._daemon_ready` via monkeypatch; layer markers; a 10x / random-order run | 2026-10-06 |
 
 ## Closed (last 5)
 
