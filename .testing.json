@@ -1,0 +1,6 @@
+{
+  "ignore": ["site/**", "data/**", "scripts/**"],
+  "mutate": {
+    "include": ["tcgwatch/**/*.py"]
+  }
+}

@@ -10,7 +10,7 @@ A restock poller that runs all day as the scheduled task "TCG Restock Watch" and
 
 ## Git
 
-Default branch is `master`. Worktree per feature from `origin/master`; finish with `git land`. Code lands only on David's "land it".
+Default branch is `master`. Worktree per feature from `origin/master`; finish with `git land master` (a bare `git land` fails: it looks for a remote ref `main`). Code lands only on David's "land it".
 
 ## Testing
 
@@ -22,9 +22,11 @@ TDD is the default; standards live in the `testing` skill.
 | One file | `python -m pytest tests/test_browser_recycle.py` |
 | While working | `python -m pytest -x` |
 | Full suite | `python -m pytest` |
-| Before land | `python $HOME/.agents/skills/testing/scripts/land_gate.py --base origin/master`, then `git land` |
+| Before land | `python $HOME/.agents/skills/testing/scripts/land_gate.py --base origin/master`, then `git land master` |
+| Mutation score | `python $HOME/.agents/skills/testing/scripts/mutate.py --base origin/master` |
 
 - **No live hosts, no real clock in tests.** `tests/conftest.py` blocks every socket, subprocess and curl_cffi call and freezes time; a test that needs a retailer's answer reads a recorded fixture from `tests/fixtures/`.
+- **Mutation survivors** go to `docs/projects/STATUS.md` "Test backlog"; `.testing.json` limits mutation to `tcgwatch/**/*.py`.
 - **Layers:** pure rules (retire, price verdict, hot score, grouping, alerts) as unit tests; browser-facing code with a fake browser (`test_browser_recycle.py`), never a real Chrome.
 - **Oracle:** `README.md` states the rules (Price sanity, Hot first, retire days, alert text). Expected values come from it or are worked out by hand, never from running the code.
 - **Exemplars:** `test_hot_score.py` (each expected value worked by hand in a comment, time injected, the README's own battle-deck example); `test_price_verdict.py` (pure, parametrized, hand-worked 1.10x boundaries).

@@ -6,7 +6,7 @@ This repo also keeps a detailed roadmap at [docs/ROADMAP.md](../ROADMAP.md) — 
 
 | Thread | Branch | Status | Next action | Touched |
 |---|---|---|---|---|
-| Test backlog (validator pass 2026-10-06, 8 minors) | — | open | Record real retailer answers to replace the hand-built `tests/fixtures/`; move `read_walmart_page` into `tests/builders.py`; parametrize the two @everyone tests; tidy `test_bestbuy_midpass_recycle.py` (private call, `object.__new__`); restore `Browser._daemon_ready` via monkeypatch; layer markers; a 10x / random-order run | 2026-10-06 |
+| Test backlog (validator pass 2026-10-06, 8 minors) | — | open | Record real retailer answers to replace the hand-built `tests/fixtures/`; move `read_walmart_page` into `tests/builders.py`; parametrize the two @everyone tests; tidy `test_bestbuy_midpass_recycle.py` (private call, `object.__new__`); restore `Browser._daemon_ready` via monkeypatch; layer markers; a 10x / random-order run; mutation survivors (2026-10-06, 15 mutants each): walmart.py 13% (13 survive: price/stock status and the browser-required branch), lifecycle.py 33% (10: retire-day 86400/3 boundaries), feeds.py 47% (8: 20/60 limits and flag defaults), msrp.py 40% (9: shipping and `or` fallbacks) | 2026-10-06 |
 
 ## Closed (last 5)
 
