@@ -1,0 +1,21 @@
+{
+  "discord_invite": "https://discord.gg/golden-test",
+  "feeds": [{"subreddit": "PokemonTCG", "keywords": ["restock"]}],
+  "products": [
+    {"retailer": "target", "id": "111", "name": "Pokemon Prismatic Evolutions Elite Trainer Box", "msrp": 49.99},
+    {"retailer": "walmart", "id": "222", "name": "Pokemon Prismatic Evolutions Elite Trainer Box", "msrp": 49.99},
+    {"retailer": "target", "id": "333", "name": "One Piece OP-09 Booster Box", "msrp": 107.76},
+    {"retailer": "bestbuy", "id": "444", "name": "One Piece OP-09 Booster Box", "msrp": 107.76},
+    {"retailer": "gamestop", "id": "555", "name": "One Piece OP-09 Booster Box", "msrp": 107.76},
+    {"retailer": "target", "id": "666", "name": "Riftbound Origins Booster Display", "msrp": null},
+    {"retailer": "walmart", "id": "777", "name": "Pokemon Old Set Tin", "msrp": 24.99}
+  ],
+  "releases": [
+    {"game": "Pokemon", "name": "Out Now Set", "date": "2027-01-10", "note": "released", "source": "https://example.test/out"},
+    {"game": "One Piece", "name": "Soon Set", "date": "2027-01-20", "note": "a \"quoted\" note", "source": null},
+    {"game": "Riftbound", "name": "Near Set", "date": "2027-02-20", "note": "", "source": "https://example.test/near"},
+    {"game": "Pokemon", "name": "Far Set", "date": "2027-04-01", "note": "far away"},
+    {"game": "Pokemon", "name": "Too Old", "date": "2026-12-01", "note": "dropped, over 14 days ago"},
+    {"game": "Pokemon", "name": "Bad Date", "date": "soon", "note": "dropped, unparseable"}
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "target:111": {"in_stock": true, "price": 49.99, "updated": 1799999000.0, "first_seen": 1799000000.0, "last_in_stock": 1799999000.0},
+  "walmart:222": {"in_stock": false, "price": null, "updated": 1799998000.0, "first_seen": 1799000000.0},
+  "market:Pokemon|prismatic evolutions elite trainer box": {"market": 75.0, "url": "https://tcgplayer.test/prismatic", "name": "Prismatic Evolutions Elite Trainer Box", "updated": 1799990000.0},
+  "target:333": {"in_stock": false, "price": null, "updated": 1799997000.0, "first_seen": 1799000000.0, "last_in_stock": 1799800000.0},
+  "bestbuy:444": {"in_stock": true, "price": 119.99, "updated": 1799996400.0, "first_seen": 1799000000.0, "last_in_stock": 1799996400.0},
+  "gamestop:555": {"in_stock": true, "price": 99.99, "updated": 1799996000.0, "first_seen": 1799000000.0, "last_in_stock": 1799996000.0},
+  "market:One Piece|op 09 booster box": {"market": 112.0, "url": "https://tcgplayer.test/op09", "name": "One Piece OP-09 Booster Box", "updated": 1799990000.0},
+  "walmart:777": {"in_stock": false, "price": null, "updated": 1799000000.0, "first_seen": 1791360000.0},
+  "reddit:PokemonTCG": {"seen": ["a1", "a2"], "recent": [["a1", 1799990000.0, "Prismatic Evolutions ETB restock at Target"], ["a2", 1799980000.0, "Unrelated post"]], "updated": 1799990000.0}
+}

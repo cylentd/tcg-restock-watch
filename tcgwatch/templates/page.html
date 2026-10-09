@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0f1f">
+<title>{{title}}</title>
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+__STYLE__</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="hero">
+    <img class="mascot" src="mascot.webp" alt="" decoding="async">
+    <div>
+      <h1>{{hero_lead}} <em>{{hero_accent}}</em></h1>
+      <p class="sub">{{sub}}</p>
+      <a class="join" id="join" href="#" target="_blank" rel="noopener" hidden><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.3 5.4A16 16 0 0 0 15.4 4l-.2.4a15 15 0 0 1 3.6 1.8 13 13 0 0 0-13.6 0A15 15 0 0 1 8.8 4.4L8.6 4a16 16 0 0 0-3.9 1.4C2.2 9.1 1.5 12.7 1.8 16.3A16 16 0 0 0 6.7 19l1-1.6a10 10 0 0 1-1.6-.8l.4-.3a11.5 11.5 0 0 0 11 0l.4.3-1.6.8 1 1.6a16 16 0 0 0 4.9-2.7c.4-4.2-.7-7.8-2.9-10.9ZM8.7 14.1c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Zm6.6 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Z"/></svg>{{join}}</a>
+    </div>
+  </div>
+  <div class="stats" id="stats"></div>
+</header>
+
+<section class="reel-wrap" id="reelWrap" hidden>
+  <div class="reel-head"><span class="micro">{{hot_heading}}</span></div>
+  <div class="reel" id="reel"><div class="track" id="track"></div></div>
+</section>
+
+<section class="cal-wrap" id="calWrap" hidden>
+  <button class="reel-head cal-toggle" id="calToggle"><span class="micro">{{cal_heading}}</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+  <div class="cal-collapse" id="calCollapse"><div class="cal" id="cal"></div></div>
+</section>
+
+<!-- Local shops: hand-curated static reference list near ZIP 95035 (Milpitas, CA). No live data,
+     no API calls — just links a user can click through and check for themselves. Names, addresses
+     and URLs below were confirmed via web search 2026-09-07 (Wizards store locator, Yelp, each
+     shop's own site) — verify hours/inventory yourself before visiting, those change often. -->
+<section class="lgs-wrap" id="lgsWrap">
+  <div class="reel-head"><span class="micro">{{shops_heading}}</span></div>
+  <p class="lgs-note">{{shops_note}}</p>
+  <div class="lgs-grid">
+    {{shops}}
+  </div>
+</section>{{sections_html}}
+
+<div class="bar">
+  <label class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" type="search" placeholder="{{search_placeholder}}" autocomplete="off"></label>
+  <div class="strip">
+    <div class="seg" id="game"><button data-v="" class="on">{{game_all}}</button><button data-v="Pokemon">Pokemon</button><button data-v="One Piece">One Piece</button><button data-v="Riftbound">Riftbound</button></div>
+    <span id="retailers" style="display:contents"></span>
+    <button class="chip toggle" id="inStockToggle" style="--c:var(--good)"><span class="sw"></span>{{in_stock_chip}}</button>
+    <div class="selwrap" id="kindWrap"><svg class="si" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16l-6 7.5V19l-4 2v-8.5z"/></svg><select class="sortsel" id="kind"><option value="">{{kind_all}}</option><option value="Booster Box">{{kind_box}}</option><option value="ETB">{{kind_etb}}</option><option value="Bundle">{{kind_bundle}}</option><option value="Collection">{{kind_collection}}</option><option value="Deck">{{kind_deck}}</option><option value="Packs">{{kind_packs}}</option></select><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+    <div class="selwrap"><svg class="si" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 6h13M7 12h9M7 18h5"/><path d="m3 6 .01.01M3 12l.01.01M3 18l.01.01"/></svg><select class="sortsel" id="sort"><option value="hot">{{sort_hot}}</option><option value="stock">{{sort_stock}}</option><option value="premium">{{sort_premium}}</option><option value="name">{{sort_name}}</option><option value="msrp">{{sort_msrp}}</option></select><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+  </div>
+  <div class="count" id="count"></div>
+</div>
+
+<div class="list" id="list"></div>
+<details class="retired" id="retired" hidden><summary class="micro"><span id="retiredCount"></span> {{retired_tail}}</summary><div class="list" id="retiredList"></div></details>
+<footer><span>{{footer_snapshot}} <span id="gen"></span>{{footer_built}} <span id="poll"></span></span><span>{{footer_feeds}} <span id="feeds"></span></span></footer>
+</div>
+
+<dialog class="sheet" id="sheet" aria-labelledby="sheetTitle">
+  <div class="sheet-card" id="sheetCard">
+    <div class="grip"></div>
+    <button class="sheet-x" id="sheetX" aria-label="{{close}}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <div class="sheet-art" id="sheetArt"></div>
+    <div class="sheet-body" id="sheetBody"></div>
+  </div>
+</dialog>
+<div class="toast" id="toast" hidden></div>
+
+<script id="data" type="application/json">__DATA__</script>
+<script>
+__SCRIPT__</script>
+</body>
+</html>
