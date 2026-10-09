@@ -10,7 +10,9 @@ A restock poller that runs all day as the scheduled task "TCG Restock Watch" and
 
 ## Git
 
-Default branch is `master`. Worktree per feature from `origin/master`; finish with `git land master` (a bare `git land` fails: it looks for a remote ref `main`). Code lands only on David's "land it".
+Default branch is `master`. Worktree per feature from `origin/master`; finish with `git land master` (a bare `git land` fails: it looks for a remote ref `main`). The conductor lands code without asking, within the conductor skill's hard limits (David, 2026-10-09).
+
+Deploy the status page with `python C:\Users\David\Github\tcg-restock-watch\watch.py --site --deploy`, in exactly that form, because the settings allow rule matches it. Deploy after any land that changes the page.
 
 ## Testing
 
