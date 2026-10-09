@@ -27,10 +27,24 @@ DAEMON_EXE = "agent-browser-win32-x64.exe"
 RECYCLE_AFTER_S = 6 * 3600
 DAEMON_CAP_MB = 1500
 CHROME_CAP_MB = 2000
+# Measured 2026-10-08 (ledger #47): the daemon reached ~2.5 GB private memory in ~5 h without ever
+# tripping DAEMON_CAP_MB, because the caps read resident set size and Windows trims an idle
+# daemon's working set. Private bytes are what grows, so the caps now read those.
+# Backstop when memory readings miss a leak: restart this session's Chrome (never the shared daemon) after this many agent-browser commands.
+# Judgment, not measured: a Best Buy pass is ~33 products at several commands each, so 2000 commands
+# is a few passes, well inside the ~5 h the 2.5 GB leak took.
+RECYCLE_AFTER_COMMANDS = 2000
+BYTES_PER_MB = 1024 * 1024
+
+
+def _mem_bytes(p) -> int:
+    """Private (committed) bytes where psutil reports them (Windows), else RSS."""
+    mem = p.info["memory_info"]
+    return getattr(mem, "private", None) or mem.rss
 
 
 def _rss_mb(procs) -> int:
-    return sum(p.info["memory_info"].rss for p in procs if p.info.get("memory_info")) // (1024 * 1024)
+    return sum(_mem_bytes(p) for p in procs if p.info.get("memory_info")) // BYTES_PER_MB
 
 
 def _procs(name: str, cmd_contains: str | None = None) -> list:
@@ -96,6 +110,7 @@ class Browser:
         if not self.exe:
             raise BrowserError("agent-browser not found on PATH (npm install -g agent-browser)")
         self.launched = time.time()
+        self.commands = 0
 
     def _base(self) -> list[str]:
         return [
@@ -171,12 +186,14 @@ class Browser:
             log.warning("browser close: %s", e)
         _kill(_procs("chrome.exe", self.profile_dir), "orphaned watcher Chrome")
         Browser._daemon_ready = False
+        self.commands = 0
 
     def recycle(self, reason: str) -> None:
         """Restart the browser, and the daemon too when it has grown past DAEMON_CAP_MB.
 
         Killing the daemon drops every other agent-browser session on the machine, so it
-        is done only on memory, never on the clock, and the log says so each time.
+        is done only on daemon memory, never on the clock or the command count, and the
+        log says so each time.
         """
         daemon_mb, chrome_mb = self.memory_mb()
         log.info("browser recycle (%s): daemon %d MB, chrome %d MB", reason, daemon_mb, chrome_mb)
@@ -198,6 +215,8 @@ class Browser:
             return f"daemon {daemon_mb} MB"
         if chrome_mb > CHROME_CAP_MB:
             return f"chrome {chrome_mb} MB"
+        if self.commands > RECYCLE_AFTER_COMMANDS:
+            return f"commands {self.commands}"
         return None
 
     def due_for_recycle(self) -> str | None:
@@ -210,6 +229,7 @@ class Browser:
 
     def run(self, *args: str, check: bool = True) -> str:
         self._ensure_daemon()
+        self.commands += 1
         cmd = self._base() + list(args)
         log.debug("agent-browser %s", " ".join(args[:3]))
         proc = subprocess.Popen(
