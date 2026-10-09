@@ -27,6 +27,7 @@ Where tcg-restock-watch is going. Conductors read this before sizing work here a
 - 2026-10-09: "Is it a deal?" sits at the top of the page, above the product list (David, 2a).
 - 2026-10-09: accepted the default deal thresholds: deal at or under MSRP x 1.10, fair under market x 0.90, peak within 5% of the 90-day high, early data under 28 days (David, 2a).
 - 2026-10-09: run the TCGplayer market tick on its own while the restock watcher stays off (David, 4a).
+- 2026-10-09: trend sparklines fit their own range with a start-value line, over a shorter time window or a smaller chart (David, 1a, after "the graph seems pretty flat"). The shelf-check card keeps one fixed size, and the picker shows product pictures.
 
 ## Not doing
 
