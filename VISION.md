@@ -20,8 +20,12 @@ Where tcg-restock-watch is going. Conductors read this before sizing work here a
 - 2026-10-09: added a per-scanner audit to TODO, to find where each scanner can improve (David).
 - 2026-10-09: replaced the stock-first site direction with the five journeys above, because "most products are going to be above MSRP. This makes in stock mean nothing." (David)
 - 2026-10-09: kept the watcher's scheduled task disabled after the leak fix landed (David).
+- 2026-10-09: buy automation stops at the cart and David clicks Buy (1a), over full auto-checkout. Meta Muse research found no sanctioned agent checkout that handles drops or bot checks.
+- 2026-10-09: "site is for everyone. buy automation is for me but can be for everyone if it works." (David)
+- 2026-10-09: premium collections count as hot items, beside booster bundles, ETBs and booster boxes (David, 3a).
 
 ## Not doing
 
+- Full auto-checkout: the bot adds to cart, a human clicks Buy (2026-10-09).
 - Polling Pokemon Center: Imperva blocks automated browsers; the Reddit feeds cover its drops.
 - Routine production traffic to tcgcsv.com.
