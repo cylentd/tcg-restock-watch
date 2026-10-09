@@ -70,7 +70,7 @@ def _group_listings(cfg: Config, state: State) -> tuple[dict[str, dict], float]:
         key = grouping.group_key(p.name)
         g = groups.setdefault(
             key,
-            {"key": key, "game": grouping.game_of(p.name), "name": grouping.market_query(p.name), "msrp": None,
+            {"key": key, "game": grouping.game_of(p.name), "name": grouping.display_name(p.name), "msrp": None,
              "market": None, "listings": []},
         )
         if g["msrp"] is None and p.msrp:

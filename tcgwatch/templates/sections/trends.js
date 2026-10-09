@@ -1,11 +1,17 @@
 // Is it a deal? (journey 5): per-game price index cards and a shelf-price check.
 // Data: D.trends from tcgwatch/site_data/trends.py. Rules and worked examples: docs/trends.md.
 const TR_INDEX_BASE = 100;       // docs/trends.md "Game index": the base date is 100
-const TR_MATCH_MAX = 6;          // search results shown at once; fits above the inputs on a 390px phone
 const TR_SPARK_W = 120;          // sparkline viewBox; the svg stretches to its box
-const TR_SPARK_H = 36;
-const TR_SPARK_PAD = 3;          // keeps the 2.4px stroke inside the box at the max and min
-const TR = {key: null};
+const TR_SPARK_H = 56;           // viewBox height, matched to .tr-spark's css height so the stroke is not squashed
+// The y-range fits the plotted values (David, 2026-10-09: "the graph seems pretty flat"). The pad is
+// the share of the fitted span added above and below, so the stroke never touches the box edge.
+const TR_SPARK_PAD = 0.1;
+// The smallest span drawn, in index points. Real history (2026-09-06 to 10-09) wobbles about half a
+// point a day, so a fit tighter than this would draw that noise as a crash.
+const TR_SPARK_MIN_SPAN = 4;
+const TR_LIST_MAX = 296;         // px: the open list's tallest, about five and a half 52px rows, so a cut row hints at scrolling
+const TR_LIST_GAP = 8;           // px kept between the open list and the screen edge
+const TR = {key: null, active: -1, hits: []};
 
 // The verdict for a typed price: the only rule this file holds, and it is a comparison, not a formula.
 // The provider (site_data/trends.py) bakes every ceiling, every shown price and which line to print;
@@ -16,12 +22,27 @@ const trBand = (price, b) => b.deal_below != null && price <= b.deal_below ? 'de
 const trDate = iso => new Date(iso + 'T00:00:00Z').toLocaleDateString('en-US', {month:'short', day:'numeric', timeZone:'UTC'});
 const trPrice = s => { const v = parseFloat(String(s).replace(/[^\d.]/g, '')); return v > 0 ? v : null; };
 
+// [low, high] of the sparkline's y axis: the values' own min and max, widened to minSpan around their
+// middle when they sit closer than that, then padded by pad x span on each side.
+function trSparkRange(vals, minSpan = TR_SPARK_MIN_SPAN, pad = TR_SPARK_PAD){
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  if (hi - lo < minSpan) { const mid = (lo + hi) / 2; lo = mid - minSpan / 2; hi = mid + minSpan / 2; }
+  const p = (hi - lo) * pad;
+  return [lo - p, hi + p];
+}
+
+// Points sit at their date, so a gap in the history reads as a gap. The dashed line is the base date
+// (index 100), the same point the card's "since" number counts from: above it is up, below it is down.
 function trSpark(index){
   if (index.length < 2) return '';
-  const vals = index.map(p => p[1]), min = Math.min(...vals), span = (Math.max(...vals) - min) || 1;
-  const step = TR_SPARK_W / (vals.length - 1), h = TR_SPARK_H - TR_SPARK_PAD * 2;
-  const pts = vals.map((v, i) => `${(i * step).toFixed(1)},${(TR_SPARK_PAD + h - (v - min) / span * h).toFixed(1)}`).join(' ');
-  return `<svg class="tr-spark" viewBox="0 0 ${TR_SPARK_W} ${TR_SPARK_H}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" vector-effect="non-scaling-stroke"/></svg>`;
+  const [lo, hi] = trSparkRange(index.map(p => p[1]));
+  const t = index.map(p => Date.parse(p[0])), t0 = t[0], tw = (t[t.length - 1] - t0) || 1;
+  const y = v => (TR_SPARK_H - (v - lo) / (hi - lo) * TR_SPARK_H).toFixed(1);
+  const pts = index.map((p, i) => `${((t[i] - t0) / tw * TR_SPARK_W).toFixed(1)},${y(p[1])}`).join(' ');
+  const base = y(TR_INDEX_BASE);
+  return `<svg class="tr-spark" viewBox="0 0 ${TR_SPARK_W} ${TR_SPARK_H}" preserveAspectRatio="none" aria-hidden="true">`
+    + `<line class="tr-base" x1="0" y1="${base}" x2="${TR_SPARK_W}" y2="${base}" vector-effect="non-scaling-stroke"/>`
+    + `<polyline points="${pts}" vector-effect="non-scaling-stroke"/></svg>`;
 }
 
 function trGameCard([game, t]){
@@ -41,14 +62,82 @@ function trGameCard([game, t]){
 
 const trProducts = () => live().filter(g => D.trends.products[g.key]);
 
-function trMatches(q){
+// Products whose game and name together hold every typed word, in any order and any case (the shown
+// name drops the game word, so "riftbound" must match the game). Nothing typed keeps them all, so the
+// list doubles as a picture menu for someone who does not know the product's name.
+const trFilter = (list, q) => {
   const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+  return list.filter(g => { const text = `${g.game} ${g.name}`.toLowerCase(); return words.every(w => text.includes(w)); });
+};
+
+// The active option after an arrow key in a list of n, wrapping at both ends; any other key keeps it.
+function trStep(active, n, key){
+  if (key === 'ArrowDown') return active + 1 >= n ? 0 : active + 1;
+  if (key === 'ArrowUp') return active <= 0 ? n - 1 : active - 1;
+  return active;
+}
+
+// Which option Enter picks: the highlighted one, else the first match, else none (-1).
+const trEnterPick = (active, n) => active >= 0 ? active : n > 0 ? 0 : -1;
+
+// Where the list opens: up when `want` px fits in the room above the field (the field then stays low,
+// in the thumb zone), else down when it fits below, else toward the larger room. `max` never exceeds
+// the room on the chosen side, so the first and last options are never cut off by the screen edge.
+function trPlace(above, below, want){
+  const up = above >= want || (below < want && above >= below);
+  return {up, max: Math.min(want, up ? above : below)};
+}
+
+// Same picture as the product list (page.js row thumbs): g.img, already a local webp, or the
+// placeholder. `pic` false leaves the box empty, for the invisible reserve (trReserve).
+const trThumb = (g, pic = true) => `<span class="thumb tr-thumb">${!pic ? '' : g && g.img ? `<img src="${g.img}" alt="" loading="lazy" decoding="async">` : PLACEHOLDER}</span>`;
+
+// Measures the room between the field and the visible screen edges (the visual viewport, so a phone
+// keyboard counts as an edge) and places the list in it.
+function trFit(){
+  const box = $('#trMatches'), field = $('.tr-inputs').getBoundingClientRect(), vv = window.visualViewport;
+  const top = vv ? vv.offsetTop : 0, bottom = top + (vv ? vv.height : innerHeight);
+  box.style.maxHeight = 'none';
+  const want = Math.min(box.scrollHeight, TR_LIST_MAX);
+  const place = trPlace(field.top - top - TR_LIST_GAP, bottom - field.bottom - TR_LIST_GAP, want);
+  box.classList.toggle('down', !place.up);
+  box.style.maxHeight = `${place.max}px`;
+}
+
+function trOpen(open){
+  $('#trMatches').hidden = !open;
+  // The scrim dims the page under the open list; a tap on it closes the list instead of landing on
+  // whatever sits under the finger (QA 2026-10-09: a tap at the heading picked a product).
+  $('#trScrim').hidden = !open;
+  $('#trCheck').classList.toggle('picking', open);
+  $('#trQ').setAttribute('aria-expanded', String(open));
+  if (open) trFit();
+  else { TR.active = -1; $('#trQ').removeAttribute('aria-activedescendant'); }
+}
+
+function trActivate(i){
+  TR.active = i;
+  const opts = $('#trMatches').querySelectorAll('.tr-match');
+  opts.forEach((o, j) => o.setAttribute('aria-selected', String(j === i)));
+  if (i < 0 || !opts[i]) { $('#trQ').removeAttribute('aria-activedescendant'); return; }
+  $('#trQ').setAttribute('aria-activedescendant', opts[i].id);
+  // Scroll the list only, never the page (scrollIntoView would move the page under the reader).
+  const box = $('#trMatches'), o = opts[i];
+  if (o.offsetTop < box.scrollTop) box.scrollTop = o.offsetTop;
+  else if (o.offsetTop + o.offsetHeight > box.scrollTop + box.clientHeight) box.scrollTop = o.offsetTop + o.offsetHeight - box.clientHeight;
+}
+
+function trMatches(q){
+  const picked = TR.key && D.groups.find(x => x.key === TR.key);
+  // With a product picked and its name still in the box, show every product to switch to.
+  TR.hits = trFilter(trProducts(), picked && q === picked.name ? '' : q);
   const box = $('#trMatches');
-  if (!words.length || TR.key) { box.hidden = true; return; }
-  const hits = trProducts().filter(g => words.every(w => g.name.toLowerCase().includes(w))).slice(0, TR_MATCH_MAX);
-  box.innerHTML = hits.length ? hits.map(g => `<button class="tr-match" role="option" data-key="${g.key}">${gameGlyph(g.game)}<span>${g.name}</span></button>`).join('')
+  box.innerHTML = TR.hits.length ? TR.hits.map((g, i) => `<div class="tr-match" role="option" id="trOpt${i}" data-key="${g.key}" aria-selected="false">${trThumb(g)}<span class="tr-match-n">${gameGlyph(g.game)}${g.name}</span></div>`).join('')
     : '<div class="tr-empty">{{tr_no_match}}</div>';
-  box.hidden = false;
+  box.scrollTop = 0;
+  trOpen(true);
+  // Typed words highlight the first match, the one Enter picks; a picked product highlights itself.
+  trActivate(picked ? TR.hits.indexOf(picked) : q.trim() ? trEnterPick(-1, TR.hits.length) : -1);
 }
 
 function trWhy(band, b){
@@ -58,13 +147,16 @@ function trWhy(band, b){
   return b.high_band === 'fair' ? `{{tr_why_high_fair}}` : `{{tr_why_high_deal}}`;
 }
 
-function trVerdict(b){
-  const price = trPrice($('#trPrice').value);
-  // The wait state holds the verdict's two lines, so typing a price never moves the inputs below it.
-  if (price == null) return `<div class="tr-verdict wait"><b>{{tr_wait_word}}</b><span>{{tr_wait}}</span></div>`;
-  const band = trBand(price, b);
+const trWait = line => `<div class="tr-verdict wait"><b>{{tr_wait_word}}</b><span>${line}</span></div>`;
+
+function trVerdictOf(band, b){
   const word = {deal:'{{tr_deal}}', fair:'{{tr_fair}}', high:'{{tr_high}}'}[band];
   return `<div class="tr-verdict ${band}"><b>${word}</b><span>${trWhy(band, b)}</span></div>`;
+}
+
+function trVerdict(b){
+  const price = trPrice($('#trPrice').value);
+  return price == null ? trWait('{{tr_wait}}') : trVerdictOf(trBand(price, b), b);
 }
 
 function trWarnings(g, b){
@@ -74,24 +166,41 @@ function trWarnings(g, b){
   return out.length ? `<ul class="tr-warn">${out.map(w => `<li>${w}</li>`).join('')}</ul>` : '';
 }
 
-function trDraw(){
-  const g = TR.key && D.groups.find(x => x.key === TR.key);
-  if (!g) { $('#trOut').innerHTML = '<p class="tr-hint">{{tr_check_hint}}</p>'; return; }
+// One state of the check: the picked product, then the verdict, the ceilings and the warnings.
+// `verdict` is the verdict box's html; trDraw passes the live one, trReserve each possible one.
+function trState(g, verdict, pic = true){
+  if (!g) return `<div class="tr-pick">${trThumb(null, pic)}<div><div class="tr-pick-n tr-pick-hint">{{tr_check_hint}}</div><div class="tr-pick-f"></div></div></div>${trWait('{{tr_wait}}')}`;
   const b = D.trends.products[g.key], m = g.market;
   const facts = [g.msrp ? `{{meter_msrp}} ${money(g.msrp)}` : '', m && m.price ? `{{meter_market}} ${money(m.price)}` : ''].filter(Boolean).join(' · ');
-  const head = `<div class="tr-pick"><div class="tr-pick-n">${gameGlyph(g.game)}${g.name}</div>${facts ? `<div class="tr-pick-f num">${facts}</div>` : ''}</div>`;
-  if (b.deal_below == null && b.fair_below == null) { $('#trOut').innerHTML = head + '<p class="tr-hint">{{tr_no_bands}}</p>' + trWarnings(g, b); return; }
+  const head = `<div class="tr-pick">${trThumb(g, pic)}<div><div class="tr-pick-n">${gameGlyph(g.game)}${g.name}</div><div class="tr-pick-f num">${facts}</div></div></div>`;
+  if (b.deal_below == null && b.fair_below == null) return head + trWait('{{tr_no_bands}}') + trWarnings(g, b);
   const bands = [
     b.deal_below != null ? (v => `<span class="tr-band deal">{{tr_deal_line}}</span>`)(money(b.deal_shown)) : '',
     b.fair_line ? (v => `<span class="tr-band fair">{{tr_fair_line}}</span>`)(money(b.fair_shown)) : '',
   ].join('');
-  $('#trOut').innerHTML = head + trVerdict(b) + `<div class="tr-bands">${bands}</div>` + trWarnings(g, b);
+  return head + verdict(b) + `<div class="tr-bands">${bands}</div>` + trWarnings(g, b);
+}
+
+function trDraw(){
+  const g = TR.key && D.groups.find(x => x.key === TR.key);
+  $('#trLive').innerHTML = trState(g, trVerdict);
+}
+
+// David, 2026-10-09: "The card shouldnt also expand and shrink." Every state the check can show is
+// laid out, invisible, in the same grid cell as the live one, so the browser sizes the card to the
+// tallest state at the reader's own width and font; switching product, verdict or notes never moves it.
+function trReserve(){
+  // Pictures never load in the reserve: the thumb box has a fixed size either way.
+  const states = [trState(null, null, false)];
+  for (const g of trProducts())
+    for (const band of ['deal', 'fair', 'high']) states.push(trState(g, b => trVerdictOf(band, b), false));
+  $('#trGhost').innerHTML = states.map(s => `<div class="tr-state">${s}</div>`).join('');
 }
 
 function trPick(key){
   const g = D.groups.find(x => x.key === key);
   if (!g) return;
-  TR.key = key; $('#trQ').value = g.name; $('#trMatches').hidden = true;
+  TR.key = key; $('#trQ').value = g.name; trOpen(false);
   trDraw(); $('#trPrice').focus({preventScroll:true});
 }
 
@@ -101,14 +210,37 @@ function trPick(key){
   // Games with a trend first, then early data, then none; the provider's order (by name) breaks ties.
   const rank = ([, t]) => !t.index.length ? 2 : t.early ? 1 : 0;
   $('#trGames').innerHTML = Object.entries(D.trends.games).sort((a, b) => rank(a) - rank(b)).map(trGameCard).join('');
-  const q = $('#trQ'), price = $('#trPrice'), dock = $('#trDock'), check = $('#trCheck');
+  trReserve(); trDraw();
+  const q = $('#trQ'), price = $('#trPrice'), dock = $('#trDock'), check = $('#trCheck'), box = $('#trMatches');
   q.addEventListener('input', () => { const g = TR.key && D.groups.find(x => x.key === TR.key);
     if (g && q.value !== g.name) TR.key = null; trMatches(q.value); trDraw(); });
-  q.addEventListener('focus', () => trMatches(q.value));
-  q.addEventListener('keydown', e => { if (e.key === 'Escape') $('#trMatches').hidden = true; });
-  $('#trMatches').addEventListener('click', e => { const b = e.target.closest('.tr-match'); if (b) trPick(b.dataset.key); });
+  q.addEventListener('focus', () => { if (TR.key) q.select(); trMatches(q.value); });
+  q.addEventListener('click', () => { if (box.hidden) trMatches(q.value); });
+  q.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { trOpen(false); return; }
+    if (e.key === 'Enter') {
+      const i = trEnterPick(TR.active, TR.hits.length);
+      if (!box.hidden && i >= 0) { e.preventDefault(); trPick(TR.hits[i].key); }
+      return;
+    }
+    // Arrows only: Home and End keep moving the caret inside the text box (ARIA combobox pattern).
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    if (box.hidden) trMatches(q.value);
+    if (!TR.hits.length) return;
+    e.preventDefault();
+    trActivate(trStep(TR.active, TR.hits.length, e.key));
+  });
+  q.addEventListener('blur', () => setTimeout(() => { if (!box.contains(document.activeElement)) trOpen(false); }));
+  // pointerdown keeps focus in the box (a tap would blur it first and close the list under the finger).
+  box.addEventListener('pointerdown', e => e.preventDefault());
+  box.addEventListener('click', e => { const o = e.target.closest('.tr-match'); if (o) trPick(o.dataset.key); });
   price.addEventListener('input', trDraw);
-  document.addEventListener('click', e => { if (!e.target.closest('.tr-inputs, .tr-matches')) $('#trMatches').hidden = true; });
+  document.addEventListener('click', e => { if (!e.target.closest('.tr-inputs')) trOpen(false); });
+  $('#trScrim').addEventListener('click', () => trOpen(false));
+  // The phone keyboard opening, a rotation or a scroll changes the room around the field.
+  const refit = () => { if (!box.hidden) trFit(); };
+  (window.visualViewport || window).addEventListener('resize', refit);
+  addEventListener('scroll', refit, {passive:true});
   // Phone thumb zone: a docked button jumps to the check from anywhere on the page. It hides while
   // the check is on screen; trends.css hides it from 640px up, where the page is not one long column.
   if ('IntersectionObserver' in window) {

@@ -96,3 +96,16 @@ def test_row_shows_msrp_market_price_and_the_premium_between_them(tmp_path, msrp
     assert row["msrp"] == msrp, "MSRP shown on the row"
     assert (row["market"] or {}).get("price") == market, "TCGplayer market price shown on the row"
     assert row["premium"] == premium, f"premium for MSRP {msrp} and market {market}"
+
+
+def test_a_pokemon_center_row_keeps_pokemon_center_in_its_name(tmp_path):
+    # grouping.display_name: the store edition is named "Pokemon Center ..."; the plain game word goes.
+    products = [
+        Product("target", "111", "Pokemon Mega Evolution Elite Trainer Box", msrp=49.99),
+        Product("bestbuy", "222", "Pokemon Center Mega Evolution Elite Trainer Box", msrp=59.99),
+    ]
+
+    page = collect_page(tmp_path, products, {})
+
+    assert sorted(g["name"] for g in page["groups"]) == ["Mega Evolution Elite Trainer Box",
+                                                         "Pokemon Center Mega Evolution Elite Trainer Box"]

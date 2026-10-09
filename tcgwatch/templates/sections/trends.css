@@ -1,19 +1,24 @@
   /* Is it a deal? (journey 5). Colour map, page.css tokens only: green = deal, amber = caution (fair
      price, or a game at its peak), red = not a deal, sky = calm (under its peak), grey = too little
      data. Phone first: the inputs sit at the bottom of the check card, inside the thumb zone. */
-  .tr-wrap { --tr-deal:color-mix(in srgb, var(--good) 65%, var(--ink)); margin:16px 0 0; animation:rise .45s cubic-bezier(.2,.7,.2,1) both .14s; }
+  .tr-wrap { --tr-deal:color-mix(in srgb, var(--good) 65%, var(--ink)); margin:16px 0 0; animation:rise .45s cubic-bezier(.2,.7,.2,1) backwards .14s; }
+  /* `backwards`, not `both`: a held transform would make the section a stacking context and the
+     scrim's containing block, and the later sections would paint over the open product list. */
   .tr-wrap .reel-head { padding:0 0 8px; }
   .tr-grid { display:grid; gap:10px; }
   .tr-games { display:grid; gap:8px; }
   .tr-game { background:var(--glass); border:1px solid var(--stroke); border-radius:14px; padding:10px 12px; display:flex; flex-direction:column; gap:8px; }
   .tr-g-top { display:flex; align-items:center; justify-content:space-between; gap:8px; }
-  .tr-g-body { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; gap:14px; min-height:36px; }
+  .tr-g-body { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; gap:14px; min-height:56px; }
   .tr-num { display:flex; flex-direction:column; gap:3px; }
   .tr-num b { font:800 22px/1 var(--display); letter-spacing:-.02em; color:var(--ink); }
   .tr-num span { font-size:12px; color:var(--ink-3); }
   .tr-note { margin:0; font-size:13px; color:var(--ink-3); }
-  .tr-spark { display:block; width:100%; height:36px; }
+  /* The height matches TR_SPARK_H in trends.js, so the viewBox is never squashed. The y axis fits the
+     line's own range; the dashed base line (index 100) is where the "since" number counts from. */
+  .tr-spark { display:block; width:100%; height:56px; overflow:visible; }
   .tr-spark polyline { fill:none; stroke:var(--ink-2); stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; }
+  .tr-spark .tr-base { stroke:var(--ink-3); stroke-width:1; stroke-dasharray:3 3; }
   .tr-game.peak .tr-spark polyline { stroke:var(--warn); }
   .tr-game.under .tr-spark polyline { stroke:var(--sky); }
   .tr-pill { font:700 10px/1 var(--body); letter-spacing:.06em; text-transform:uppercase; padding:4px 7px; border-radius:5px; white-space:nowrap;
@@ -23,14 +28,33 @@
 
   .tr-check { background:var(--card-2); border:1px solid var(--line-2); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:12px; }
   .tr-title { font:800 20px/1.1 var(--display); letter-spacing:-.02em; margin:0; }
-  .tr-out { display:flex; flex-direction:column; gap:10px; }
+  /* Fixed size: the live state and an invisible copy of every other state share one grid cell, so the
+     cell is as tall as the tallest state (trReserve in trends.js). Nothing below it ever moves. */
+  .tr-out { display:grid; }
+  .tr-out .tr-state { grid-area:1 / 1; display:flex; flex-direction:column; gap:10px; min-width:0; }
+  .tr-ghost { display:contents; }
+  .tr-ghost .tr-state { visibility:hidden; }
+  /* The verdict box takes the reserved room left over, so the ceilings and notes sit right above the
+     inputs and a state shorter than the tallest shows no blank band (QA 2026-10-09). */
+  .tr-out .tr-state > .tr-verdict { flex:1 0 auto; }
   .tr-hint { margin:0; color:var(--ink-2); font-size:14px; }
-  .tr-pick-n { font:700 15px/1.25 var(--display); letter-spacing:-.01em; }
-  .tr-pick-f { font-size:12px; color:var(--ink-3); margin-top:3px; }
+  .tr-pick { display:grid; grid-template-columns:44px minmax(0,1fr); align-items:center; gap:10px; }
+  /* Two lines kept for every name, one for the MSRP and market line, so a short name or a missing
+     price does not pull the verdict up. */
+  .tr-pick-n { font:700 15px/1.25 var(--display); letter-spacing:-.01em; min-height:2.5em;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .tr-pick-n.tr-pick-hint { font:400 14px/1.25 var(--body); color:var(--ink-2); letter-spacing:0; }
+  .tr-pick-f { font-size:12px; line-height:1.3; min-height:1.3em; color:var(--ink-3); margin-top:3px; }
+  /* page.css places .thumb in the product row's grid from its desktop width up; here it sits in its own cell. */
+  .tr-thumb, .tr-match .tr-thumb { grid-area:auto; width:44px; height:44px; border-radius:8px; }
+  .tr-thumb img { filter:drop-shadow(0 3px 6px var(--canvas)); }
+  .tr-thumb svg { width:20px; height:20px; }
   .tr-verdict { display:flex; flex-direction:column; gap:4px; padding:12px 14px; border-radius:12px; border:1px solid var(--line); background:var(--card); }
   .tr-verdict b { font:800 30px/1 var(--display); letter-spacing:-.02em; }
-  .tr-verdict span { font-size:13px; color:var(--ink-2); }
+  .tr-verdict span { font-size:13px; line-height:1.35; min-height:2.7em; color:var(--ink-2); }
   .tr-verdict.wait b { color:var(--ink-3); }
+  /* Waiting, the instruction sits at the box's foot, next to the inputs it points at. */
+  .tr-verdict.wait span { margin-top:auto; min-height:0; }
   .tr-verdict.deal { border-color:color-mix(in srgb, var(--good) 55%, transparent); background:color-mix(in srgb, var(--good) 14%, transparent); }
   .tr-verdict.deal b { color:var(--tr-deal); }
   .tr-verdict.fair { border-color:color-mix(in srgb, var(--warn) 45%, transparent); background:color-mix(in srgb, var(--warn) 10%, transparent); }
@@ -52,16 +76,26 @@
   .tr-money > span { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--ink-3); font:700 16px var(--body); pointer-events:none; }
   .tr-price input { padding-left:26px; font-weight:700; font-variant-numeric:tabular-nums; }
   /* Results open upward over the verdict: the keyboard covers anything below the inputs on a phone,
-     and an overlay never pushes the inputs down while someone is typing. */
-  .tr-matches { position:absolute; left:0; right:0; bottom:calc(100% + 6px); z-index:3; display:flex; flex-direction:column; padding:4px; border-radius:12px;
+     and an overlay never pushes the inputs down while someone is typing. Every product is listed with
+     its picture; the list scrolls inside itself, about five rows tall, never past half the screen. */
+  .tr-matches { position:absolute; left:0; right:0; bottom:calc(100% + 6px); z-index:3; display:flex; flex-direction:column; gap:2px; padding:4px; border-radius:12px;
+    max-height:min(18.5rem, 50svh); overflow-y:auto; overscroll-behavior:contain;
     background:color-mix(in srgb, var(--ink) 6%, var(--canvas)); border:1px solid var(--line-2); box-shadow:0 18px 40px -14px var(--canvas); }
   .tr-matches[hidden] { display:none; }
-  .tr-match { display:flex; align-items:center; gap:2px; min-height:44px; padding:6px 10px; border:0; border-radius:8px; background:none; color:var(--ink);
-    font:600 14px/1.2 var(--body); text-align:left; cursor:pointer; }
-  .tr-match .gi { flex:none; }
+  /* trFit (trends.js) opens it downward when the room above is too small, and sets its max-height. */
+  .tr-matches.down { bottom:auto; top:calc(100% + 6px); }
+  /* While the list is open the page dims under a scrim; the inputs and the list sit above it. */
+  /* Above the sticky filter bar (page.css .bar, z-index 5), under the toast. */
+  .tr-scrim { position:fixed; inset:0; z-index:7; background:color-mix(in srgb, var(--canvas) 60%, transparent); }
+  .tr-scrim[hidden] { display:none; }
+  .tr-check.picking .tr-inputs { z-index:8; }
+  .tr-match { flex:none; display:grid; grid-template-columns:40px minmax(0,1fr); align-items:center; gap:10px; min-height:52px; padding:6px 10px 6px 6px;
+    border-radius:8px; color:var(--ink); font:600 14px/1.2 var(--body); cursor:pointer; }
+  .tr-match .tr-thumb { width:40px; height:40px; }
   /* Two lines, not an ellipsis: sibling sets share long prefixes ("Mega Evolution Ascended Heroes ..."). */
-  .tr-match span { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-  .tr-match:hover, .tr-match:focus-visible { background:var(--card-2); outline:0; }
+  .tr-match-n { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .tr-match:hover, .tr-match[aria-selected="true"] { background:var(--card-2); }
+  .tr-match[aria-selected="true"] { box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent); }
   .tr-empty { padding:12px 10px; color:var(--ink-3); font-size:13px; }
 
   .tr-dock { position:fixed; right:16px; bottom:max(16px, env(safe-area-inset-bottom)); z-index:4; min-height:48px; padding:0 18px; border-radius:24px;

@@ -91,3 +91,32 @@ def test_game_is_read_from_the_product_name(name, game):
     assert grouping.game_of(name) == game
 
 
+# --- the name the page shows ----------------------------------------------------------------------
+# The page drops the leading game word (the game tag beside the name already says it), but "Pokemon
+# Center" is the store-exclusive edition's name, not the game: without it "Center Mega Evolution Elite
+# Trainer Box" reads as a typo of "Mega Evolution Elite Trainer Box" (QA, 2026-10-09).
+
+
+@pytest.mark.parametrize(
+    "name, shown",
+    [
+        ("Pokemon Mega Evolution Elite Trainer Box", "Mega Evolution Elite Trainer Box"),
+        ("Pokemon Center Mega Evolution Elite Trainer Box", "Pokemon Center Mega Evolution Elite Trainer Box"),
+        ("Pokémon Center 30th Celebration Elite Trainer Box", "Pokémon Center 30th Celebration Elite Trainer Box"),
+        ("One Piece OP-09 Booster Box", "OP-09 Booster Box"),
+        ("Riftbound Origins Booster Display", "Origins Booster Display"),
+        ("Pokemon Destined Rivals Booster Bundle (bundle or box, verify)", "Destined Rivals Booster Bundle"),
+    ],
+    ids=["game-word-dropped", "pokemon-center-kept", "pokemon-center-accented", "one-piece", "riftbound",
+         "verify-note-dropped"],
+)
+def test_the_shown_name_drops_the_game_word_but_keeps_pokemon_center(name, shown):
+    assert grouping.display_name(name) == shown
+
+
+def test_the_tcgplayer_query_for_a_pokemon_center_product_is_unchanged():
+    # TCGplayer lists these as "Pokemon Center ..." under the Pokemon category; the query has always
+    # been sent without the game word, and the market tick's saved matches depend on it.
+    assert grouping.market_query("Pokemon Center Mega Evolution Elite Trainer Box") == "Center Mega Evolution Elite Trainer Box"
+
+

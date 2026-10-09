@@ -63,6 +63,13 @@ With market 50 instead, `fair_below` is 45.0, under `deal_below`: `fair_line` is
 
 Per game: `below_high = (max - latest) / max x 100`, rounded to one digit, where `max` is the highest index in the window and `latest` the newest. `None` under early data or with no data. The card prints it as "N% under its 90-day high" whenever it is above 0, so a card "At 90-day peak" that also reads "-1.5% since Sep 6" shows how far it sits from the top. Example: indexes 100, 200, 197. Max 200, latest 197, `below_high` 1.5. The peak band (5%) still calls it at the peak.
 
+## Sparkline
+
+Display only, in `trends.js` (2026-10-09). It plots the whole 90-day index; points sit at their date.
+
+- **Y range:** the line's own min and max, widened to at least 4 index points around their middle, then padded by 10% of the span each side. Never anchored at 0. Example: 100, 110, 137.5 gives 96.25 to 141.25.
+- **Reference:** a dashed line at the base date (index 100), where the "since" number counts from.
+
 ## Drop risk
 
 A product is at risk when `config.yaml` `releases:` has an entry that:

@@ -1,14 +1,15 @@
 <!-- place: top -->
 <section class="tr-wrap" id="trWrap" hidden>
+  <div class="tr-scrim" id="trScrim" hidden></div>
   <div class="reel-head"><span class="micro">{{tr_heading}}</span></div>
   <div class="tr-grid">
     <div class="tr-games" id="trGames"></div>
     <div class="tr-check" id="trCheck">
       <h3 class="tr-title">{{tr_check_heading}}</h3>
-      <div class="tr-out" id="trOut" aria-live="polite"><p class="tr-hint">{{tr_check_hint}}</p></div>
+      <div class="tr-out" id="trOut"><div class="tr-state" id="trLive" aria-live="polite"><p class="tr-hint">{{tr_check_hint}}</p></div><div class="tr-ghost" id="trGhost" aria-hidden="true"></div></div>
       <div class="tr-inputs">
-        <div class="tr-matches" id="trMatches" role="listbox" hidden></div>
-        <label class="tr-field tr-product"><span class="micro">{{tr_product_label}}</span><input id="trQ" type="search" placeholder="{{tr_product_placeholder}}" autocomplete="off" aria-controls="trMatches"></label>
+        <div class="tr-matches" id="trMatches" role="listbox" aria-label="{{tr_product_label}}" hidden></div>
+        <label class="tr-field tr-product"><span class="micro">{{tr_product_label}}</span><input id="trQ" type="text" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="trMatches" placeholder="{{tr_product_placeholder}}" autocomplete="off" enterkeyhint="search"></label>
         <label class="tr-field tr-price"><span class="micro">{{tr_price_label}}</span><span class="tr-money"><span aria-hidden="true">$</span><input id="trPrice" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off"></span></label>
       </div>
     </div>
