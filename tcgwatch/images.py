@@ -16,6 +16,8 @@ log = logging.getLogger("tcgwatch.images")
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36"
 MAX_EDGE = 400
 QUALITY = 82
+FAIL_SUFFIX = ".fail"  # sits next to the would-be WebP; holds the time of the failed try
+RETRY_FAILED_AFTER_S = 24 * 60 * 60  # David, 2026-10-09: a failed download is retried at most once a day
 _last_fetch = 0.0
 
 
@@ -113,6 +115,8 @@ def ensure_webp(url: str | None, out_dir: Path) -> str | None:
     path = out_dir / name
     if path.exists():
         return name
+    if _failed_recently(out_dir / (name + FAIL_SUFFIX)):
+        return None
     # One fetch at a time, gently spaced; image CDNs are tolerant but not infinitely so.
     wait = 0.4 - (time.time() - _last_fetch)
     if wait > 0:
@@ -131,4 +135,19 @@ def ensure_webp(url: str | None, out_dir: Path) -> str | None:
         return name
     except Exception as e:  # noqa: BLE001
         log.warning("image failed %s: %s", url[:80], e)
+        _remember_failure(out_dir / (name + FAIL_SUFFIX))
         return None
+
+
+def _failed_recently(marker: Path) -> bool:
+    try:
+        return time.time() - float(marker.read_text()) < RETRY_FAILED_AFTER_S
+    except (OSError, ValueError):
+        return False
+
+
+def _remember_failure(marker: Path) -> None:
+    try:
+        marker.write_text(str(time.time()))
+    except OSError:
+        pass  # no marker only means one more try on the next build
