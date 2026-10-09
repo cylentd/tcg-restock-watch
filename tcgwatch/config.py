@@ -21,6 +21,7 @@ class Product:
     cart: bool = True
     url: str | None = None
     tcgplayer: int | None = None  # pin the market lookup to this TCGplayer product id
+    hot: bool | None = None  # config.yaml `hot: true/false` beats the name rule (README "Hot items")
 
     @property
     def key(self) -> str:
@@ -99,6 +100,13 @@ def _cart_mode(value) -> str:
     return mode
 
 
+def _hot_override(value) -> bool | None:
+    """A product's `hot:` value: true, false, or None when the line leaves it out."""
+    if value is None or isinstance(value, bool):
+        return value
+    raise ValueError(f"hot must be true or false (got {value!r})")
+
+
 def load(path: str | Path) -> Config:
     path = Path(path)
     raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
@@ -118,6 +126,7 @@ def load(path: str | Path) -> Config:
                 cart=bool(item.get("cart", True)),
                 url=item.get("url"),
                 tcgplayer=int(item["tcgplayer"]) if item.get("tcgplayer") else None,
+                hot=_hot_override(item.get("hot")),
             )
         )
 

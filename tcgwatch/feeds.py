@@ -15,11 +15,14 @@ from __future__ import annotations
 
 import logging
 import re
+import string
 import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 
 import requests
+
+from . import copy_text, raffles
 
 log = logging.getLogger("tcgwatch.feeds")
 
@@ -29,6 +32,11 @@ LINK_RE = re.compile(r'href="(https?://[^"]+)"')
 TOKEN_URL = "https://www.reddit.com/api/v1/access_token"
 API = "https://oauth.reddit.com"
 
+# Raffles stay in state while open, and this long after they close, so the page can show "just closed".
+RAFFLE_KEEP_AFTER_CLOSE_S = 86400
+RAFFLE_STATE_KEY = "raffles"
+HTML_TAG_RE = re.compile(r"<[^>]+>")
+
 
 class FeedRule:
     def __init__(self, subreddit: str, keywords: list[str], exclude: list[str] | None = None):
@@ -36,10 +44,14 @@ class FeedRule:
         self.keywords = [k.lower() for k in keywords]
         self.exclude = [k.lower() for k in (exclude or [])]
 
+    def excludes(self, text: str) -> bool:
+        t = text.lower()
+        return any(x in t for x in self.exclude)
+
     def matches(self, title: str) -> bool:
-        t = title.lower()
-        if any(x in t for x in self.exclude):
+        if self.excludes(title):
             return False
+        t = title.lower()
         return any(k in t for k in self.keywords)
 
 
@@ -116,6 +128,7 @@ def _fetch_api(cfg, subreddit: str, limit: int) -> list[dict]:
             {
                 "id": d.get("name") or d.get("id"),
                 "title": (d.get("title") or "").strip(),
+                "body": d.get("selftext") or "",
                 "created": float(d.get("created_utc") or time.time()),
                 "permalink": permalink,
                 "url": url,
@@ -156,6 +169,7 @@ def _fetch_rss(subreddit: str, limit: int) -> list[dict]:
             {
                 "id": entry.findtext("a:id", default=permalink, namespaces=NS),
                 "title": title,
+                "body": HTML_TAG_RE.sub(" ", content),
                 "created": created,
                 "permalink": permalink,
                 "url": _external_link(content, permalink),
@@ -187,9 +201,58 @@ def price_in(title: str) -> float | None:
     return float(m.group(1)) if m else None
 
 
+def _iso(ts: float) -> str:
+    return datetime.fromtimestamp(ts, timezone.utc).isoformat()
+
+
+def _retailer_in(text: str) -> str:
+    """The retailer named first in the post text, display-cased; copy.json retailer_unknown if none."""
+    low = text.lower()
+    found = [(low.find(r), r) for r in raffles.RETAILERS if r in low]
+    return string.capwords(min(found)[1]) if found else copy_text.words("retailer_unknown")
+
+
+def raffle_record(post: dict, now: float) -> dict | None:
+    """The stored record for a raffle post, or None when the post is not a raffle."""
+    body = post.get("body", "")
+    if not raffles.is_raffle(post["title"], body):
+        return None
+    window = raffles.entry_window(post["title"], body, post["created"])
+    opens, closes = window if window else (None, None)
+    return {
+        "retailer": _retailer_in(f"{post['title']}\n{body}"),
+        "title": post["title"],
+        "url": post["url"] or post["permalink"],
+        "opens": opens.isoformat() if opens else _iso(post["created"]),
+        "closes": closes.isoformat() if closes else None,
+        "seen_at": _iso(now),
+    }
+
+
+def _still_listed(record: dict, now: float) -> bool:
+    closes = record.get("closes")
+    if not closes:
+        return True
+    return datetime.fromisoformat(closes).timestamp() >= now - RAFFLE_KEEP_AFTER_CLOSE_S
+
+
+def _store_raffles(state, new: list[dict], now: float) -> None:
+    old = state.get(RAFFLE_STATE_KEY).get("items", [])
+    kept = [r for r in old if _still_listed(r, now)]
+    fresh = [r for r in new if _still_listed(r, now)]  # a first run must not store long-closed raffles
+    if fresh or len(kept) != len(old):
+        state.update(RAFFLE_STATE_KEY, items=kept + fresh)
+
+
 def check(rules: list[FeedRule], state, cfg=None, max_age_s: int = 3600) -> list[dict]:
-    """Return new matching posts, marking every fetched post as seen in state."""
+    """Return new matching posts, marking every fetched post as seen in state.
+
+    A raffle post (raffles.is_raffle) is a hit without a keyword match and carries a "raffle" record;
+    an exclude word still vetoes it. Every new raffle is stored in state, fresh or not, unless it closed
+    over RAFFLE_KEEP_AFTER_CLOSE_S ago (README "Alerts": RAFFLE).
+    """
     hits = []
+    new_raffles = []
     now = time.time()
     for sub in sorted({r.subreddit for r in rules}):
         try:
@@ -211,13 +274,18 @@ def check(rules: list[FeedRule], state, cfg=None, max_age_s: int = 3600) -> list
             if post["id"] in seen:
                 continue
             new_seen.append(post["id"])
+            sub_rules = [r for r in rules if r.subreddit == sub]
+            record = None if any(r.excludes(post["title"]) for r in sub_rules) else raffle_record(post, now)
+            if record:
+                new_raffles.append(record)
             if first_run or now - post["created"] > max_age_s:
                 continue
-            for rule in rules:
-                if rule.subreddit == sub and rule.matches(post["title"]):
-                    hits.append({**post, "subreddit": sub})
-                    break
+            if record:
+                hits.append({**post, "subreddit": sub, "raffle": record})
+            elif any(r.matches(post["title"]) for r in sub_rules):
+                hits.append({**post, "subreddit": sub})
         state.update(f"reddit:{sub}", seen=new_seen[-300:], recent=recent[-400:])
+    _store_raffles(state, new_raffles, now)
     return hits
 
 

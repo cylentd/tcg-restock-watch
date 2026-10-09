@@ -377,6 +377,82 @@
     .wrap { max-width:72rem; }
     .row { grid-template-columns:92px minmax(0,1.2fr) 320px minmax(0,1.3fr); grid-template-areas:"thumb head meter shops"; }
   }
+  /* Is it a deal? (journey 5). Colour map, page.css tokens only: green = deal, amber = caution (fair
+     price, or a game at its peak), red = not a deal, sky = calm (under its peak), grey = too little
+     data. Phone first: the inputs sit at the bottom of the check card, inside the thumb zone. */
+  .tr-wrap { --tr-deal:color-mix(in srgb, var(--good) 65%, var(--ink)); margin:16px 0 0; animation:rise .45s cubic-bezier(.2,.7,.2,1) both .14s; }
+  .tr-wrap .reel-head { padding:0 0 8px; }
+  .tr-grid { display:grid; gap:10px; }
+  .tr-games { display:grid; gap:8px; }
+  .tr-game { background:var(--glass); border:1px solid var(--stroke); border-radius:14px; padding:10px 12px; display:flex; flex-direction:column; gap:8px; }
+  .tr-g-top { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .tr-g-body { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; gap:14px; min-height:36px; }
+  .tr-num { display:flex; flex-direction:column; gap:3px; }
+  .tr-num b { font:800 22px/1 var(--display); letter-spacing:-.02em; color:var(--ink); }
+  .tr-num span { font-size:12px; color:var(--ink-3); }
+  .tr-note { margin:0; font-size:13px; color:var(--ink-3); }
+  .tr-spark { display:block; width:100%; height:36px; }
+  .tr-spark polyline { fill:none; stroke:var(--ink-2); stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; }
+  .tr-game.peak .tr-spark polyline { stroke:var(--warn); }
+  .tr-game.under .tr-spark polyline { stroke:var(--sky); }
+  .tr-pill { font:700 10px/1 var(--body); letter-spacing:.06em; text-transform:uppercase; padding:4px 7px; border-radius:5px; white-space:nowrap;
+    color:var(--ink-3); background:var(--card-2); }
+  .tr-pill.peak { color:var(--warn); background:color-mix(in srgb, var(--warn) 16%, transparent); }
+  .tr-pill.under { color:var(--sky); background:color-mix(in srgb, var(--sky) 14%, transparent); }
+
+  .tr-check { background:var(--card-2); border:1px solid var(--line-2); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:12px; }
+  .tr-title { font:800 20px/1.1 var(--display); letter-spacing:-.02em; margin:0; }
+  .tr-out { display:flex; flex-direction:column; gap:10px; }
+  .tr-hint { margin:0; color:var(--ink-2); font-size:14px; }
+  .tr-pick-n { font:700 15px/1.25 var(--display); letter-spacing:-.01em; }
+  .tr-pick-f { font-size:12px; color:var(--ink-3); margin-top:3px; }
+  .tr-verdict { display:flex; flex-direction:column; gap:4px; padding:12px 14px; border-radius:12px; border:1px solid var(--line); background:var(--card); }
+  .tr-verdict b { font:800 30px/1 var(--display); letter-spacing:-.02em; }
+  .tr-verdict span { font-size:13px; color:var(--ink-2); }
+  .tr-verdict.wait b { color:var(--ink-3); }
+  .tr-verdict.deal { border-color:color-mix(in srgb, var(--good) 55%, transparent); background:color-mix(in srgb, var(--good) 14%, transparent); }
+  .tr-verdict.deal b { color:var(--tr-deal); }
+  .tr-verdict.fair { border-color:color-mix(in srgb, var(--warn) 45%, transparent); background:color-mix(in srgb, var(--warn) 10%, transparent); }
+  .tr-verdict.fair b { color:var(--warn); }
+  .tr-verdict.high { border-color:color-mix(in srgb, var(--accent-2) 45%, transparent); background:color-mix(in srgb, var(--accent-2) 10%, transparent); }
+  .tr-verdict.high b { color:var(--accent-2); }
+  .tr-bands { display:flex; flex-wrap:wrap; gap:6px; }
+  .tr-band { font:700 12px/1 var(--body); padding:6px 8px; border-radius:7px; border:1px solid var(--line); color:var(--ink-2); font-variant-numeric:tabular-nums; }
+  .tr-band.deal { color:var(--tr-deal); } .tr-band.fair { color:var(--warn); }
+  .tr-warn { margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:4px; font-size:13px; color:var(--warn); }
+
+  .tr-inputs { position:relative; display:grid; grid-template-columns:minmax(0,1fr) 7.5rem; gap:8px; }
+  .tr-field { display:flex; flex-direction:column; gap:6px; min-width:0; }
+  .tr-field input { width:100%; min-width:0; min-height:44px; padding:0 12px; border-radius:10px; border:1px solid var(--line-2); background:var(--glass);
+    color:var(--ink); font:16px var(--body); outline:0; }
+  .tr-field input:focus { border-color:color-mix(in srgb, var(--accent) 70%, var(--line-2)); }
+  .tr-field input::placeholder { color:var(--ink-3); }
+  .tr-money { position:relative; display:block; }
+  .tr-money > span { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--ink-3); font:700 16px var(--body); pointer-events:none; }
+  .tr-price input { padding-left:26px; font-weight:700; font-variant-numeric:tabular-nums; }
+  /* Results open upward over the verdict: the keyboard covers anything below the inputs on a phone,
+     and an overlay never pushes the inputs down while someone is typing. */
+  .tr-matches { position:absolute; left:0; right:0; bottom:calc(100% + 6px); z-index:3; display:flex; flex-direction:column; padding:4px; border-radius:12px;
+    background:color-mix(in srgb, var(--ink) 6%, var(--canvas)); border:1px solid var(--line-2); box-shadow:0 18px 40px -14px var(--canvas); }
+  .tr-matches[hidden] { display:none; }
+  .tr-match { display:flex; align-items:center; gap:2px; min-height:44px; padding:6px 10px; border:0; border-radius:8px; background:none; color:var(--ink);
+    font:600 14px/1.2 var(--body); text-align:left; cursor:pointer; }
+  .tr-match .gi { flex:none; }
+  /* Two lines, not an ellipsis: sibling sets share long prefixes ("Mega Evolution Ascended Heroes ..."). */
+  .tr-match span { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .tr-match:hover, .tr-match:focus-visible { background:var(--card-2); outline:0; }
+  .tr-empty { padding:12px 10px; color:var(--ink-3); font-size:13px; }
+
+  .tr-dock { position:fixed; right:16px; bottom:max(16px, env(safe-area-inset-bottom)); z-index:4; min-height:48px; padding:0 18px; border-radius:24px;
+    border:1px solid color-mix(in srgb, var(--accent) 60%, var(--line-2)); background:var(--accent); color:var(--canvas); font:800 14px/1 var(--body);
+    box-shadow:0 14px 30px -10px var(--canvas); cursor:pointer; }
+  .tr-dock[hidden] { display:none; }
+  @media (min-width:640px) {
+    .tr-wrap { margin-top:18px; }
+    .tr-grid { grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); gap:12px; align-items:start; }
+    .tr-check { padding:16px 18px; }
+    .tr-dock { display:none; }
+  }
 </style>
 </head>
 <body>
@@ -392,6 +468,22 @@
   </div>
   <div class="stats" id="stats"></div>
 </header>
+<section class="tr-wrap" id="trWrap" hidden>
+  <div class="reel-head"><span class="micro">Is it a deal?</span></div>
+  <div class="tr-grid">
+    <div class="tr-games" id="trGames"></div>
+    <div class="tr-check" id="trCheck">
+      <h3 class="tr-title">Check a shelf price</h3>
+      <div class="tr-out" id="trOut" aria-live="polite"><p class="tr-hint">Pick a product, then type the price on the shelf.</p></div>
+      <div class="tr-inputs">
+        <div class="tr-matches" id="trMatches" role="listbox" hidden></div>
+        <label class="tr-field tr-product"><span class="micro">Product</span><input id="trQ" type="search" placeholder="Which product?" autocomplete="off" aria-controls="trMatches"></label>
+        <label class="tr-field tr-price"><span class="micro">Shelf price</span><span class="tr-money"><span aria-hidden="true">$</span><input id="trPrice" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off"></span></label>
+      </div>
+    </div>
+  </div>
+</section>
+<button class="tr-dock" id="trDock" hidden>Check a shelf price</button>
 
 <section class="reel-wrap" id="reelWrap" hidden>
   <div class="reel-head"><span class="micro">Hot right now</span></div>
@@ -444,9 +536,39 @@
 </dialog>
 <div class="toast" id="toast" hidden></div>
 
-<script id="data" type="application/json">{"generated": 1800000000.0, "generated_label": "Jan 15, 08:00", "last_poll": 1799999000.0, "releases": [{"game": "Pokemon", "name": "Out Now Set", "date": "2027-01-10", "mon": "Jan", "day": 10, "days": -5, "note": "released", "source": "https://example.test/out"}, {"game": "One Piece", "name": "Soon Set", "date": "2027-01-20", "mon": "Jan", "day": 20, "days": 5, "note": "a \"quoted\" note", "source": null}, {"game": "Riftbound", "name": "Near Set", "date": "2027-02-20", "mon": "Feb", "day": 20, "days": 36, "note": "", "source": "https://example.test/near"}, {"game": "Pokemon", "name": "Far Set", "date": "2027-04-01", "mon": "Apr", "day": 1, "days": 76, "note": "far away", "source": null}], "groups": [{"key": "Pokemon|prismatic evolutions elite trainer box", "game": "Pokemon", "name": "Prismatic Evolutions Elite Trainer Box", "msrp": 49.99, "market": {"price": 75.0, "url": "https://tcgplayer.test/prismatic", "name": "Prismatic Evolutions Elite Trainer Box"}, "listings": [{"retailer": "target", "price": 49.99, "status": "in", "checked": 1799999000.0, "url": "https://www.target.com/p/-/A-111"}, {"retailer": "walmart", "price": null, "status": "out", "checked": 1799998000.0, "url": "https://www.walmart.com/ip/222"}], "retired": null, "last_in_stock": 1799999000.0, "buzz": 1, "kind": "ETB", "img": null, "in_stock": true, "premium": 1.5, "hot": 6.75, "ev": null, "history": {"pct30": 25.0, "pct90": 25.0, "spark": [70.0, 75.0]}}, {"key": "One Piece|op 09 booster box", "game": "One Piece", "name": "OP-09 Booster Box", "msrp": 107.76, "market": {"price": 112.0, "url": "https://tcgplayer.test/op09", "name": "One Piece OP-09 Booster Box"}, "listings": [{"retailer": "target", "price": null, "status": "out", "checked": 1799997000.0, "url": "https://www.target.com/p/-/A-333"}, {"retailer": "bestbuy", "price": 119.99, "status": "in", "checked": 1799996400.0, "url": "https://www.bestbuy.com/site/444.p?skuId=444"}, {"retailer": "gamestop", "price": 99.99, "status": "in", "checked": 1799996000.0, "url": "https://www.gamestop.com/products/555.html"}], "retired": null, "last_in_stock": 1799996400.0, "buzz": 0, "kind": "Booster Box", "img": null, "in_stock": true, "premium": 1.04, "hot": 1.758, "ev": null, "history": null}, {"key": "Riftbound|origins booster display", "game": "Riftbound", "name": "Origins Booster Display", "msrp": null, "market": null, "listings": [{"retailer": "target", "price": null, "status": "unknown", "checked": null, "url": "https://www.target.com/p/-/A-666"}], "retired": null, "last_in_stock": null, "buzz": 0, "kind": "Booster Box", "img": null, "in_stock": false, "premium": null, "hot": 1.3, "ev": null, "history": null}, {"key": "Pokemon|old set tin", "game": "Pokemon", "name": "Old Set Tin", "msrp": 24.99, "market": null, "listings": [{"retailer": "walmart", "price": null, "status": "out", "checked": 1799000000.0, "url": "https://www.walmart.com/ip/777"}], "retired": "no stock anywhere for 100 days", "last_in_stock": null, "buzz": 0, "kind": "Packs", "img": null, "in_stock": false, "premium": null, "hot": 0.8, "ev": null, "history": null}], "feeds": ["r/PokemonTCG"], "buzz_posts": 2, "discord_invite": "https://discord.gg/golden-test", "mascot": true}</script>
+<script id="data" type="application/json">{"generated": 1800000000.0, "generated_label": "Jan 15, 08:00", "last_poll": 1799999000.0, "releases": [{"game": "Pokemon", "name": "Out Now Set", "date": "2027-01-10", "mon": "Jan", "day": 10, "days": -5, "note": "released", "source": "https://example.test/out"}, {"game": "One Piece", "name": "Soon Set", "date": "2027-01-20", "mon": "Jan", "day": 20, "days": 5, "note": "a \"quoted\" note", "source": null}, {"game": "Riftbound", "name": "Near Set", "date": "2027-02-20", "mon": "Feb", "day": 20, "days": 36, "note": "", "source": "https://example.test/near"}, {"game": "Pokemon", "name": "Far Set", "date": "2027-04-01", "mon": "Apr", "day": 1, "days": 76, "note": "far away", "source": null}], "groups": [{"key": "Pokemon|prismatic evolutions elite trainer box", "game": "Pokemon", "name": "Prismatic Evolutions Elite Trainer Box", "msrp": 49.99, "market": {"price": 75.0, "url": "https://tcgplayer.test/prismatic", "name": "Prismatic Evolutions Elite Trainer Box"}, "listings": [{"retailer": "target", "price": 49.99, "status": "in", "checked": 1799999000.0, "url": "https://www.target.com/p/-/A-111"}, {"retailer": "walmart", "price": null, "status": "out", "checked": 1799998000.0, "url": "https://www.walmart.com/ip/222"}], "retired": null, "last_in_stock": 1799999000.0, "buzz": 1, "kind": "ETB", "img": null, "in_stock": true, "premium": 1.5, "hot": 6.75, "ev": null, "history": {"pct30": 25.0, "pct90": 25.0, "spark": [70.0, 75.0]}}, {"key": "One Piece|op 09 booster box", "game": "One Piece", "name": "OP-09 Booster Box", "msrp": 107.76, "market": {"price": 112.0, "url": "https://tcgplayer.test/op09", "name": "One Piece OP-09 Booster Box"}, "listings": [{"retailer": "target", "price": null, "status": "out", "checked": 1799997000.0, "url": "https://www.target.com/p/-/A-333"}, {"retailer": "bestbuy", "price": 119.99, "status": "in", "checked": 1799996400.0, "url": "https://www.bestbuy.com/site/444.p?skuId=444"}, {"retailer": "gamestop", "price": 99.99, "status": "in", "checked": 1799996000.0, "url": "https://www.gamestop.com/products/555.html"}], "retired": null, "last_in_stock": 1799996400.0, "buzz": 0, "kind": "Booster Box", "img": null, "in_stock": true, "premium": 1.04, "hot": 1.758, "ev": null, "history": null}, {"key": "Riftbound|origins booster display", "game": "Riftbound", "name": "Origins Booster Display", "msrp": null, "market": null, "listings": [{"retailer": "target", "price": null, "status": "unknown", "checked": null, "url": "https://www.target.com/p/-/A-666"}], "retired": null, "last_in_stock": null, "buzz": 0, "kind": "Booster Box", "img": null, "in_stock": false, "premium": null, "hot": 1.3, "ev": null, "history": null}], "feeds": ["r/PokemonTCG"], "buzz_posts": 2, "discord_invite": "https://discord.gg/golden-test", "trends": {"games": {"One Piece": {"status": "early data", "early": true, "index": [["2027-01-14", 100.0]], "latest": 100.0, "at_peak": false, "below_high": null}, "Pokemon": {"status": "ok", "early": false, "index": [["2026-12-16", 100.0], ["2027-01-14", 107.1]], "latest": 107.1, "at_peak": true, "below_high": 0.0}, "Riftbound": {"status": "no data", "early": false, "index": [], "latest": null, "at_peak": false, "below_high": null}}, "products": {"Pokemon|prismatic evolutions elite trainer box": {"deal_below": 54.989, "fair_below": 67.5, "deal_shown": 54.98, "fair_shown": 67.5, "fair_line": true, "high_band": "fair", "high_shown": 67.5, "drop_risk": null}, "One Piece|op 09 booster box": {"deal_below": 118.536, "fair_below": 100.8, "deal_shown": 118.53, "fair_shown": 100.8, "fair_line": false, "high_band": "deal", "high_shown": 118.53, "drop_risk": null}, "Riftbound|origins booster display": {"deal_below": null, "fair_below": null, "deal_shown": null, "fair_shown": null, "fair_line": false, "high_band": null, "high_shown": null, "drop_risk": null}}}, "mascot": true}</script>
 <script>
 const D = JSON.parse(document.getElementById('data').textContent);
+// Tuning numbers, named 2026-10-09 with their values unchanged. Unless a line says otherwise they
+// came over from the single-file site.py template, tuned by eye with David on 2026-09-07.
+const FULL_TURN = 360;             // degrees in a circle
+const SWIRL_ARMS = 5;              // Riftbound's swirl glyph: five arms, 72 degrees apart
+const SECONDS_PER_MINUTE = 60;
+const SECONDS_PER_HOUR = 3600;
+const SECONDS_PER_DAY = 86400;
+const AGO_SECONDS_UNDER = 90;      // "45s" until 90 s, then minutes
+const AGO_MINUTES_UNDER = 5400;    // minutes until 90 min, then hours
+const AGO_HOURS_UNDER = 172800;    // hours until 48 h, then days
+const AT_MSRP_MAX = 1.15;          // market up to 1.15x MSRP still reads "at MSRP"
+const MARKET_EVEN_BAND = 0.03;     // a listing within 3% of market is "about market"
+const REEL_MAX = 10;               // hot reel shows the 10 hottest products
+const REEL_MIN = 3;                // fewer than 3 is not worth a moving strip
+const REEL_VEL_STOP = 0.05;        // px/frame below which a fling has stopped
+const REEL_FRICTION = 0.955;       // fling velocity kept per frame
+const REEL_IDLE_MS = 700;          // pause after a drag before the drift resumes
+const REEL_DRIFT = 0.4;            // idle drift, px/frame
+const REEL_DRIFT_HOVER = 0.16;     // slower drift under the mouse
+const REEL_VEL_MAX = 150;          // fling speed cap, px/frame
+const TAP_SLOP_PX = 6;             // a pointer that moved this far or less was a tap, not a drag
+const SPARK_W = 100;               // sparkline viewBox; it stretches to its box
+const SPARK_H = 28;
+const TOAST_SHOW_MS = 1400;
+const TOAST_FADE_MS = 250;         // matches the .toast opacity transition in page.css
+const CAL_SOON_DAYS = 7;           // "soon" colour on the release calendar
+const CAL_NEAR_DAYS = 30;          // "near" colour
+const CAL_DAYS_MAX = 60;           // "in N days" up to 60, then "in N weeks"
+const WHEEL_DONE_PX = 0.5;         // wheel ease stops this close to its target
+const WHEEL_EASE = 0.18;           // share of the remaining distance covered per frame (David, 2026-09-07)
 const RET = {target:{l:'Target',c:'var(--target)'}, bestbuy:{l:'Best Buy',c:'var(--bestbuy)'}, walmart:{l:'Walmart',c:'var(--walmart)'}, gamestop:{l:'GameStop',c:'var(--gamestop)'}};
 const ST = {
   in:{l:'In stock', i:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg>'},
@@ -459,7 +581,7 @@ const PLACEHOLDER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 const GAME = {
   'Pokemon':   {c:'#ffcf4a', i:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 1 9.8 8.2h-6.1a3.8 3.8 0 0 0-7.4 0H2.2A10 10 0 0 1 12 2z"/><path d="M2.2 13.8h6.1a3.8 3.8 0 0 0 7.4 0h6.1A10 10 0 0 1 2.2 13.8z"/><circle cx="12" cy="12" r="2"/></svg>'},
   'One Piece': {c:'#3ddbc4', i:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.4"/><path d="M12 7.4V21M5 13a7 7 0 0 0 14 0M8.5 13H5M19 13h-3.5"/></svg>'},
-  'Riftbound': {c:'#ff8a1f', i:'<svg viewBox="0 0 24 24" fill="currentColor">' + [0, 72, 144, 216, 288].map(a => `<path d="M11 12C10 5 16 1 23 4 17 4.5 15 8 15 12 15 14 12 14.5 11 12z" transform="rotate(${a} 12 12)"/>`).join('') + '</svg>'},
+  'Riftbound': {c:'#ff8a1f', i:'<svg viewBox="0 0 24 24" fill="currentColor">' + Array.from({length: SWIRL_ARMS}, (_, k) => k * FULL_TURN / SWIRL_ARMS).map(a => `<path d="M11 12C10 5 16 1 23 4 17 4.5 15 8 15 12 15 14 12 14.5 11 12z" transform="rotate(${a} 12 12)"/>`).join('') + '</svg>'},
 };
 const gameTag = name => { const g = GAME[name]; return `<span class="tag" style="--gc:${g ? g.c : 'currentColor'}">${g ? g.i : ''}${name}</span>`; };
 // Icon-only glyph (no text chip) for tight spaces; title carries the game name for a11y/hover.
@@ -468,7 +590,7 @@ const F = {q:'', game:'', kind:'', ret:new Set(Object.keys(RET)), status:'', sor
 const FLAME = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1 4 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z"/></svg>';
 const $ = s => document.querySelector(s);
 const money = v => v == null ? null : '$' + Number(v).toFixed(2);
-const ago = ts => { if(!ts) return ''; const d = Math.max(0, Math.round(D.generated - ts)); return d<90? d+'s' : d<5400? Math.round(d/60)+'m' : d<172800? Math.round(d/3600)+'h' : Math.round(d/86400)+'d'; };
+const ago = ts => { if(!ts) return ''; const d = Math.max(0, Math.round(D.generated - ts)); return d<AGO_SECONDS_UNDER? d+'s' : d<AGO_MINUTES_UNDER? Math.round(d/SECONDS_PER_MINUTE)+'m' : d<AGO_HOURS_UNDER? Math.round(d/SECONDS_PER_HOUR)+'h' : Math.round(d/SECONDS_PER_DAY)+'d'; };
 
 function stats(){
   const listings = D.groups.reduce((n,g)=>n+g.listings.length,0);
@@ -486,7 +608,7 @@ function stats(){
 // Single source of truth for the premium verdict; the meter headline is the only place it renders.
 // Color still grades severity (green/amber/red); the word doesn't need to try too — "2.5x
 // scalped" said the same thing twice, awkwardly (David, 2026-09-07).
-const premiumVerdict = p => p == null ? null : p <= 1.15 ? {cls:'ok', t:'at MSRP'} : {cls: p <= 2 ? 'hi' : 'wild', t:'over MSRP'};
+const premiumVerdict = p => p == null ? null : p <= AT_MSRP_MAX ? {cls:'ok', t:'at MSRP'} : {cls: p <= 2 ? 'hi' : 'wild', t:'over MSRP'};
 // The ratio + verdict word alone: the signal ("3.0x scalped"). Used on the row, where the actual
 // MSRP/Market breakdown is a click away, not a second thing to scan past for every product.
 function meterHead(g){
@@ -512,7 +634,7 @@ function meter(g, showHead){
 function dealBadge(l, m){
   if (l.status !== 'in' || !l.price || !m || !m.price) return '';
   const diff = l.price - m.price;
-  if (Math.abs(diff) / m.price < 0.03) return `<span class="deal even">≈ MARKET</span>`;
+  if (Math.abs(diff) / m.price < MARKET_EVEN_BAND) return `<span class="deal even">≈ MARKET</span>`;
   return diff < 0 ? `<span class="deal buy">BUY · ${money(-diff)} under</span>` : `<span class="deal pass">PASS · ${money(diff)} over</span>`;
 }
 
@@ -583,8 +705,8 @@ $('#q').oninput = e => { F.q = e.target.value; apply(); };
 $('#sort').onchange = e => { F.sort = e.target.value; apply(); };
 // Hot reel: top products by hot score, doubled into one looping track.
 (function reel(){
-  const hot = D.groups.filter(g => !g.retired && (g.img || g.premium)).sort((a,b)=>b.hot-a.hot).slice(0,10);
-  if (hot.length < 3) return;
+  const hot = D.groups.filter(g => !g.retired && (g.img || g.premium)).sort((a,b)=>b.hot-a.hot).slice(0,REEL_MAX);
+  if (hot.length < REEL_MIN) return;
   const wrap = $('#reelWrap'), reelEl = $('#reel'), track = $('#track');
   wrap.hidden = false;
   const tile = g => `<a class="tile${g.in_stock ? ' in' : ''}" href="#${encodeURIComponent(g.key)}" data-key="${g.key}"><div class="art">${g.img? `<img src="${g.img}" alt="" loading="lazy" decoding="async">` : PLACEHOLDER}</div><div class="t">${g.name}</div><div class="x">${g.in_stock? '<span class="in">In stock</span>' : ''}${g.premium? `<b>${g.premium.toFixed(1)}×</b>`:''}</div></a>`;
@@ -596,8 +718,8 @@ $('#sort').onchange = e => { F.sort = e.target.value; apply(); };
   function frame(){
     const now = performance.now();
     if (drag) { /* position follows pointer */ }
-    else if (Math.abs(vel) > 0.05) { pos += vel; vel *= 0.955; }
-    else if (!reduced && now - idleAt > 700) { pos += hover ? 0.16 : 0.4; }
+    else if (Math.abs(vel) > REEL_VEL_STOP) { pos += vel; vel *= REEL_FRICTION; }
+    else if (!reduced && now - idleAt > REEL_IDLE_MS) { pos += hover ? REEL_DRIFT_HOVER : REEL_DRIFT; }
     if (setW > 0) { pos = ((pos % setW) + setW) % setW; }
     track.style.transform = `translateX(${-pos}px)`;
     requestAnimationFrame(frame);
@@ -607,9 +729,9 @@ $('#sort').onchange = e => { F.sort = e.target.value; apply(); };
   // setPointerCapture retargets the follow-up click to the reel itself, so a click listener on the
   // track never fires. Decide tap-vs-drag on pointerup instead and open the sheet from there.
   reelEl.addEventListener('pointerdown', e => { tapTile = e.target.closest('.tile'); drag = {x:e.clientX, pos, last:e.clientX, t:performance.now()}; moved = 0; vel = 0; reelEl.classList.add('drag'); reelEl.setPointerCapture(e.pointerId); });
-  reelEl.addEventListener('pointermove', e => { if(!drag) return; const dx = e.clientX - drag.x; moved = Math.max(moved, Math.abs(dx)); pos = drag.pos - dx; const now = performance.now(); vel = -(e.clientX - drag.last) * 2; vel = Math.max(-150, Math.min(150, vel)); drag.last = e.clientX; drag.t = now; });
+  reelEl.addEventListener('pointermove', e => { if(!drag) return; const dx = e.clientX - drag.x; moved = Math.max(moved, Math.abs(dx)); pos = drag.pos - dx; const now = performance.now(); vel = -(e.clientX - drag.last) * 2; vel = Math.max(-REEL_VEL_MAX, Math.min(REEL_VEL_MAX, vel)); drag.last = e.clientX; drag.t = now; });
   const end = e => { if(!drag) return; drag = null; idleAt = performance.now(); reelEl.classList.remove('drag');
-    if (e.type === 'pointerup' && moved <= 6 && tapTile) { vel = 0; openKey(tapTile.dataset.key); } tapTile = null; };
+    if (e.type === 'pointerup' && moved <= TAP_SLOP_PX && tapTile) { vel = 0; openKey(tapTile.dataset.key); } tapTile = null; };
   reelEl.addEventListener('pointerup', end); reelEl.addEventListener('pointercancel', end);
   reelEl.addEventListener('click', e => { if (e.target.closest('.tile')) e.preventDefault(); });
 })();
@@ -635,8 +757,8 @@ function bestDeal(g){
   const best = inStock.reduce((a, b) => a.price < b.price ? a : b);
   const r = RET[best.retailer] || {l: best.retailer};
   const diff = best.price - m.price;
-  if (diff <= -m.price * 0.03) return { cls:'buy', text: `Best move: <b>${r.l}</b> at <b>${money(best.price)}</b>, ${money(-diff)} under today's market.` };
-  if (diff >= m.price * 0.03) return { cls:'pass', text: `Every listing runs over market right now. Closest is <b>${r.l}</b> at ${money(best.price)}.` };
+  if (diff <= -m.price * MARKET_EVEN_BAND) return { cls:'buy', text: `Best move: <b>${r.l}</b> at <b>${money(best.price)}</b>, ${money(-diff)} under today's market.` };
+  if (diff >= m.price * MARKET_EVEN_BAND) return { cls:'pass', text: `Every listing runs over market right now. Closest is <b>${r.l}</b> at ${money(best.price)}.` };
   return { cls:'even', text: `<b>${r.l}</b> at ${money(best.price)} is right at market price.` };
 }
 // EV per set link-out was dropped 2026-09-07: no existing EV calculator site was found to link
@@ -662,7 +784,7 @@ function evBlock(g){
 function sparkSvg(pts){
   if (!pts || pts.length < 2) return '';
   const min = Math.min(...pts), max = Math.max(...pts), span = (max - min) || 1;
-  const w = 100, h = 28;
+  const w = SPARK_W, h = SPARK_H;
   const step = w / (pts.length - 1);
   const coords = pts.map((p, i) => `${(i * step).toFixed(1)},${(h - (p - min) / span * h).toFixed(1)}`).join(' ');
   const up = pts[pts.length - 1] >= pts[0];
@@ -716,7 +838,7 @@ function showToast(msg){
   const t = $('#toast'); t.textContent = msg; t.hidden = false;
   requestAnimationFrame(() => t.classList.add('show'));
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { t.classList.remove('show'); setTimeout(() => { t.hidden = true; }, 250); }, 1400);
+  toastTimer = setTimeout(() => { t.classList.remove('show'); setTimeout(() => { t.hidden = true; }, TOAST_FADE_MS); }, TOAST_SHOW_MS);
 }
 ['#list', '#retiredList'].forEach(s => $(s).addEventListener('click', e => {
   if (e.target.closest('a')) return;
@@ -751,8 +873,8 @@ function drawCal(){
   $('#calWrap').hidden = false;
   $('#calWrap').classList.toggle('collapsed', calCollapsed());
   const R = ALL_RELEASES.filter(r => !F.game || r.game === F.game);
-  const item = r => { const d = r.days, cls = d < 0 ? 'now' : d <= 7 ? 'soon' : d <= 30 ? 'near' : '';
-    const when = d < 0 ? 'out now' : d === 0 ? 'today' : d === 1 ? 'tomorrow' : d <= 60 ? `in ${d} days` : `in ${Math.round(d / 7)} weeks`;
+  const item = r => { const d = r.days, cls = d < 0 ? 'now' : d <= CAL_SOON_DAYS ? 'soon' : d <= CAL_NEAR_DAYS ? 'near' : '';
+    const when = d < 0 ? 'out now' : d === 0 ? 'today' : d === 1 ? 'tomorrow' : d <= CAL_DAYS_MAX ? `in ${d} days` : `in ${Math.round(d / 7)} weeks`;
     const tag = r.source ? 'a' : 'div', href = r.source ? ` href="${r.source}" target="_blank" rel="noopener"` : '';
     const g = GAME[r.game] || {c:'currentColor', i:''};
     return `<${tag} class="rel ${cls}" style="--gc:${g.c}"${href} title="${r.game} — ${(r.note || '').replace(/"/g, '&quot;')}"><div class="rel-top"><div><div class="date-mon">${r.mon}</div><div class="date-day">${r.day}</div></div><div class="rel-icon">${g.i}</div></div><div class="rel-n">${r.name}</div><div class="rel-when">${when}</div></${tag}>`; };
@@ -774,8 +896,8 @@ $('#calToggle').onclick = () => setCalCollapsed(!$('#calWrap').classList.contain
   (function easeWheel(){
     if (wheelTarget !== null) {
       const d = wheelTarget - cal.scrollLeft;
-      if (Math.abs(d) < 0.5) { cal.scrollLeft = wheelTarget; wheelTarget = null; cal.classList.remove('drag'); }
-      else cal.scrollLeft += d * 0.18;
+      if (Math.abs(d) < WHEEL_DONE_PX) { cal.scrollLeft = wheelTarget; wheelTarget = null; cal.classList.remove('drag'); }
+      else cal.scrollLeft += d * WHEEL_EASE;
     }
     requestAnimationFrame(easeWheel);
   })();
@@ -797,7 +919,7 @@ $('#calToggle').onclick = () => setCalCollapsed(!$('#calWrap').classList.contain
   const end = () => { if (!drag) return; drag = null; cal.classList.remove('drag'); };
   cal.addEventListener('pointerup', end); cal.addEventListener('pointercancel', end);
   cal.addEventListener('click', e => {
-    const card = tapCard, dragged = moved > 6; tapCard = null; moved = 0;
+    const card = tapCard, dragged = moved > TAP_SLOP_PX; tapCard = null; moved = 0;
     if (dragged) { e.preventDefault(); e.stopPropagation(); return; }
     if (card && card.tagName === 'A' && !card.contains(e.target)) { e.preventDefault(); window.open(card.href, '_blank', 'noopener'); }
   }, true);
@@ -806,6 +928,128 @@ drawCal();
 // Game filter buttons get the same glyphs as the tags.
 document.querySelectorAll('#game button[data-v]').forEach(b => { const g = GAME[b.dataset.v]; if (g) { b.style.setProperty('--gc', g.c); b.insertAdjacentHTML('afterbegin', g.i); } });
 stats(); apply(); fromHash();
+// Is it a deal? (journey 5): per-game price index cards and a shelf-price check.
+// Data: D.trends from tcgwatch/site_data/trends.py. Rules and worked examples: docs/trends.md.
+const TR_INDEX_BASE = 100;       // docs/trends.md "Game index": the base date is 100
+const TR_MATCH_MAX = 6;          // search results shown at once; fits above the inputs on a 390px phone
+const TR_SPARK_W = 120;          // sparkline viewBox; the svg stretches to its box
+const TR_SPARK_H = 36;
+const TR_SPARK_PAD = 3;          // keeps the 2.4px stroke inside the box at the max and min
+const TR = {key: null};
+
+// The verdict for a typed price: the only rule this file holds, and it is a comparison, not a formula.
+// The provider (site_data/trends.py) bakes every ceiling, every shown price and which line to print;
+// docs/trends.md "Deal bands" gives the order: deal_below first, then fair_below, so deal wins.
+// test_section_trends_js.py runs this function against the documented examples.
+const trBand = (price, b) => b.deal_below != null && price <= b.deal_below ? 'deal'
+  : b.fair_below != null && price <= b.fair_below ? 'fair' : 'high';
+const trDate = iso => new Date(iso + 'T00:00:00Z').toLocaleDateString('en-US', {month:'short', day:'numeric', timeZone:'UTC'});
+const trPrice = s => { const v = parseFloat(String(s).replace(/[^\d.]/g, '')); return v > 0 ? v : null; };
+
+function trSpark(index){
+  if (index.length < 2) return '';
+  const vals = index.map(p => p[1]), min = Math.min(...vals), span = (Math.max(...vals) - min) || 1;
+  const step = TR_SPARK_W / (vals.length - 1), h = TR_SPARK_H - TR_SPARK_PAD * 2;
+  const pts = vals.map((v, i) => `${(i * step).toFixed(1)},${(TR_SPARK_PAD + h - (v - min) / span * h).toFixed(1)}`).join(' ');
+  return `<svg class="tr-spark" viewBox="0 0 ${TR_SPARK_W} ${TR_SPARK_H}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" vector-effect="non-scaling-stroke"/></svg>`;
+}
+
+function trGameCard([game, t]){
+  const cls = !t.index.length ? 'none' : t.early ? 'early' : t.at_peak ? 'peak' : 'under';
+  const pill = {none:'No data yet', early:'Early data', peak:'At 90-day peak', under:'Under its peak'}[cls];
+  let body;
+  if (cls === 'none') return `<div class="tr-game ${cls}"><div class="tr-g-top">${gameTag(game)}<span class="tr-pill ${cls}">${pill}</span></div></div>`;
+  if (cls === 'early') body = `<p class="tr-note">Too little history to call a peak.</p>`;
+  else {
+    const chg = t.latest - TR_INDEX_BASE, when = trDate(t.index[0][0]), pct = t.below_high;
+    // The distance from the window high sits beside the change since the base date, so a card at its
+    // peak never reads as a fall without saying how far it is from the high.
+    body = `<div class="tr-num"><b class="num">${chg > 0 ? '+' : ''}${chg.toFixed(1)}%</b><span>since ${when}</span>${pct > 0 ? `<span>${pct}% under its 90-day high</span>` : ''}</div>`;
+  }
+  return `<div class="tr-game ${cls}"><div class="tr-g-top">${gameTag(game)}<span class="tr-pill ${cls}">${pill}</span></div><div class="tr-g-body">${body}${trSpark(t.index)}</div></div>`;
+}
+
+const trProducts = () => live().filter(g => D.trends.products[g.key]);
+
+function trMatches(q){
+  const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+  const box = $('#trMatches');
+  if (!words.length || TR.key) { box.hidden = true; return; }
+  const hits = trProducts().filter(g => words.every(w => g.name.toLowerCase().includes(w))).slice(0, TR_MATCH_MAX);
+  box.innerHTML = hits.length ? hits.map(g => `<button class="tr-match" role="option" data-key="${g.key}">${gameGlyph(g.game)}<span>${g.name}</span></button>`).join('')
+    : '<div class="tr-empty">No product matches.</div>';
+  box.hidden = false;
+}
+
+function trWhy(band, b){
+  if (band === 'deal') { const v = money(b.deal_shown); return `At or under ${v}, close to MSRP.`; }
+  if (band === 'fair') { const v = money(b.fair_shown); return `Under ${v}, below what it sells for online.`; }
+  const v = money(b.high_shown);
+  return b.high_band === 'fair' ? `Over the fair price of ${v}.` : `Over the deal price of ${v}.`;
+}
+
+function trVerdict(b){
+  const price = trPrice($('#trPrice').value);
+  // The wait state holds the verdict's two lines, so typing a price never moves the inputs below it.
+  if (price == null) return `<div class="tr-verdict wait"><b>Deal or not?</b><span>Type the shelf price below.</span></div>`;
+  const band = trBand(price, b);
+  const word = {deal:'Deal', fair:'Fair', high:'Not a deal'}[band];
+  return `<div class="tr-verdict ${band}"><b>${word}</b><span>${trWhy(band, b)}</span></div>`;
+}
+
+function trWarnings(g, b){
+  const out = [], gt = D.trends.games[g.game], game = g.game;
+  if (gt && gt.at_peak) out.push(`${game} prices are at their 90-day peak. Waiting may pay off.`);
+  if (b.drop_risk) { const r = {release: b.drop_risk.release, when: trDate(b.drop_risk.date)}; out.push(`A ${r.release} reprint is due ${r.when}. Prices may drop.`); }
+  return out.length ? `<ul class="tr-warn">${out.map(w => `<li>${w}</li>`).join('')}</ul>` : '';
+}
+
+function trDraw(){
+  const g = TR.key && D.groups.find(x => x.key === TR.key);
+  if (!g) { $('#trOut').innerHTML = '<p class="tr-hint">Pick a product, then type the price on the shelf.</p>'; return; }
+  const b = D.trends.products[g.key], m = g.market;
+  const facts = [g.msrp ? `MSRP ${money(g.msrp)}` : '', m && m.price ? `Market ${money(m.price)}` : ''].filter(Boolean).join(' · ');
+  const head = `<div class="tr-pick"><div class="tr-pick-n">${gameGlyph(g.game)}${g.name}</div>${facts ? `<div class="tr-pick-f num">${facts}</div>` : ''}</div>`;
+  if (b.deal_below == null && b.fair_below == null) { $('#trOut').innerHTML = head + '<p class="tr-hint">No MSRP or market price yet, so no verdict for this one.</p>' + trWarnings(g, b); return; }
+  const bands = [
+    b.deal_below != null ? (v => `<span class="tr-band deal">Deal at ${v} or less</span>`)(money(b.deal_shown)) : '',
+    b.fair_line ? (v => `<span class="tr-band fair">Fair up to ${v}</span>`)(money(b.fair_shown)) : '',
+  ].join('');
+  $('#trOut').innerHTML = head + trVerdict(b) + `<div class="tr-bands">${bands}</div>` + trWarnings(g, b);
+}
+
+function trPick(key){
+  const g = D.groups.find(x => x.key === key);
+  if (!g) return;
+  TR.key = key; $('#trQ').value = g.name; $('#trMatches').hidden = true;
+  trDraw(); $('#trPrice').focus({preventScroll:true});
+}
+
+(function trSetup(){
+  if (!D.trends || !trProducts().length) return;
+  $('#trWrap').hidden = false;
+  // Games with a trend first, then early data, then none; the provider's order (by name) breaks ties.
+  const rank = ([, t]) => !t.index.length ? 2 : t.early ? 1 : 0;
+  $('#trGames').innerHTML = Object.entries(D.trends.games).sort((a, b) => rank(a) - rank(b)).map(trGameCard).join('');
+  const q = $('#trQ'), price = $('#trPrice'), dock = $('#trDock'), check = $('#trCheck');
+  q.addEventListener('input', () => { const g = TR.key && D.groups.find(x => x.key === TR.key);
+    if (g && q.value !== g.name) TR.key = null; trMatches(q.value); trDraw(); });
+  q.addEventListener('focus', () => trMatches(q.value));
+  q.addEventListener('keydown', e => { if (e.key === 'Escape') $('#trMatches').hidden = true; });
+  $('#trMatches').addEventListener('click', e => { const b = e.target.closest('.tr-match'); if (b) trPick(b.dataset.key); });
+  price.addEventListener('input', trDraw);
+  document.addEventListener('click', e => { if (!e.target.closest('.tr-inputs, .tr-matches')) $('#trMatches').hidden = true; });
+  // Phone thumb zone: a docked button jumps to the check from anywhere on the page. It hides while
+  // the check is on screen; trends.css hides it from 640px up, where the page is not one long column.
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(([e]) => { dock.hidden = e.isIntersecting; }).observe(check);
+  }
+  dock.onclick = () => {
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    check.scrollIntoView({block:'end', behavior: reduced ? 'auto' : 'smooth'});
+    (TR.key ? price : q).focus({preventScroll:true});
+  };
+})();
 </script>
 </body>
 </html>

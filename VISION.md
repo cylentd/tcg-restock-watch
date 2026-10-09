@@ -23,6 +23,10 @@ Where tcg-restock-watch is going. Conductors read this before sizing work here a
 - 2026-10-09: buy automation stops at the cart and David clicks Buy (1a), over full auto-checkout. Meta Muse research found no sanctioned agent checkout that handles drops or bot checks.
 - 2026-10-09: "site is for everyone. buy automation is for me but can be for everyone if it works." (David)
 - 2026-10-09: premium collections count as hot items, beside booster bundles, ETBs and booster boxes (David, 3a).
+- 2026-10-09: non-hot products stop being polled, not just hidden. Riftbound Vault Bundles and 30th Celebration ex Boxes count as hot; Walmart "booster (bundle or box, verify)" listings, the First Partner Illustration Collection and sticker/poster collections do not (David, "1 a d").
+- 2026-10-09: "Is it a deal?" sits at the top of the page, above the product list (David, 2a).
+- 2026-10-09: accepted the default deal thresholds: deal at or under MSRP x 1.10, fair under market x 0.90, peak within 5% of the 90-day high, early data under 28 days (David, 2a).
+- 2026-10-09: run the TCGplayer market tick on its own while the restock watcher stays off (David, 4a).
 
 ## Not doing
 

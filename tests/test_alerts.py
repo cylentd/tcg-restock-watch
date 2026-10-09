@@ -375,3 +375,60 @@ def test_feed_hit_alerts_as_subreddit_new_post_with_price_and_link(tmp_path, sen
     assert embed["title"] == "r/PokemonTCG new post"
     assert "[Target] Pokemon ETB restock $49.99" in embed["description"]
     assert embed["url"] == "https://www.target.com/p/-/A-12345"
+
+
+# -- RAFFLE feed hits (README "Alerts": RAFFLE) --------------------------------------------
+
+RAFFLE_TITLE = "[Walmart] Pokemon ETB raffle opens Jan 16 at 9am ET, closes Jan 18 at 5pm ET"
+RAFFLE_HIT = {
+    "id": "t3_r1",
+    "title": RAFFLE_TITLE,
+    "permalink": "https://www.reddit.com/r/PokemonTCGDeals/comments/r1/",
+    "url": "https://www.walmart.com/raffle/1",
+    "subreddit": "PokemonTCGDeals",
+    "raffle": {
+        "retailer": "Walmart",
+        "title": RAFFLE_TITLE,
+        "url": "https://www.walmart.com/raffle/1",
+        # Jan 16 09:00 ET = 14:00 UTC = 06:00 PST; Jan 18 17:00 ET = 22:00 UTC = 14:00 PST.
+        "opens": "2027-01-16T14:00:00+00:00",
+        "closes": "2027-01-18T22:00:00+00:00",
+        "seen_at": "2027-01-15T08:00:00+00:00",
+    },
+}
+
+
+def raffle_watcher(tmp_path, monkeypatch, hit=RAFFLE_HIT):
+    monkeypatch.setattr(watcher_mod.feeds_mod, "check", lambda rules, state, cfg=None, **kw: [hit])
+    return make_watcher(tmp_path, feeds=[Feed("PokemonTCGDeals", ["restock"])])
+
+
+def test_raffle_feed_hit_alerts_as_a_raffle_with_the_window_in_pacific_time(tmp_path, sent, monkeypatch):
+    raffle_watcher(tmp_path, monkeypatch).run_feeds()
+
+    [post] = discord_posts(sent)
+    embed = post["json"]["embeds"][0]
+    assert embed["title"] == "RAFFLE: Walmart Pokemon ETB raffle opens Jan 16 at 9am ET, closes Jan 18 at 5pm ET"
+    assert embed["description"].startswith("opens Sat Jan 16 06:00 PST, closes Mon Jan 18 14:00 PST")
+    assert embed["url"] == "https://www.walmart.com/raffle/1"
+
+
+def test_raffle_feed_hit_is_urgent_so_it_pings_everyone(tmp_path, sent, monkeypatch):
+    raffle_watcher(tmp_path, monkeypatch).run_feeds()
+
+    [post] = discord_posts(sent)
+    assert post["json"]["content"] == "@everyone"
+
+
+def test_raffle_feed_hit_without_a_link_falls_back_to_the_reddit_permalink(tmp_path, sent, monkeypatch):
+    raffle_watcher(tmp_path, monkeypatch, {**RAFFLE_HIT, "url": ""}).run_feeds()
+
+    [post] = discord_posts(sent)
+    assert post["json"]["embeds"][0]["url"] == RAFFLE_HIT["permalink"]
+
+
+def test_raffle_feed_hit_sends_nothing_when_alerts_are_off(tmp_path, sent, monkeypatch):
+    hits = raffle_watcher(tmp_path, monkeypatch).run_feeds(alert=False)
+
+    assert sent == []
+    assert hits == [RAFFLE_HIT]

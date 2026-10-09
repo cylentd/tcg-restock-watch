@@ -59,6 +59,15 @@ Alerts go to the Discord webhook, and also to an ntfy.sh topic if `ntfy_topic` i
 - **IN STOCK: name** with the price verdict and the store link. At an acceptable price it pings @everyone so it breaks through "Mentions only", and on the PC the page is already open. An INFLATED listing alerts without the ping: an overpriced restock is not worth waking the phone.
 - **Walmart wants a captcha** when the "Robot or human?" page appears. Solve it in the watcher's Chrome window. Sent at most every 30 min.
 - **r/subreddit new post** for feed keyword hits.
+- **RAFFLE: Retailer Product** for a Reddit post about a retailer raffle or invite event. The body is `opens <time>, closes <time>`, or `opens <time>, no close stated`; times are US Pacific, with the zone shown (`PST` or `PDT`). It pings @everyone and links to the post's store link (the Reddit post when it has none). Example: `RAFFLE: Walmart Pokemon ETB raffle opens Jan 16 at 9am ET, closes Jan 18 at 5pm ET` with body `opens Sat Jan 16 06:00 PST, closes Mon Jan 18 14:00 PST`.
+
+### Raffle rules
+
+- **No restock keyword needed.** A post counts when it says raffle, lottery, "request an invite" or invite-only. A weaker word (sign up, entry, enter, invite, drawing) counts only when the post also names a retailer and a trading-card word, and does not say in stock or restock.
+- **Not raffles:** a user's own giveaway ("giving away", "my raffle", "hosting a raffle"). An exclude word on the feed rule still vetoes a raffle.
+- **Same timing as other feed hits:** posts up to 1 hour old alert, and the first look at a subreddit is silent.
+- **Window:** `opens` is the first date without a closing cue ("until", "through", "ends", "closes", "deadline", "by", "before", "to", or a dash), else the time of the post. `closes` is the first date with a closing cue, else not stated. A date with no time opens at 00:00 and closes at 23:59:59. A zone named in the post (PT, ET, PST, EDT, UTC ...) applies to every date that names none of its own; with no zone anywhere the window is Eastern. A close before the open, or no date at all, gives no window: it opens when posted and has no close.
+- **Kept for the page:** a raffle stays in the watcher's state until 24 hours after it closes (no close stated: until the state is cleared). A raffle that closed over 24 hours before it was first seen is never stored.
 
 ### When an alert fires
 
@@ -80,6 +89,41 @@ Default sort is "Hottest first". The score is the market premium over MSRP, weig
 If the TCGplayer name matcher cannot find a product (deck names ending in "[Set of 2]" look like lot listings and are skipped), add `tcgplayer: <product id>` to its config line. The id is the number after `/product/` in the TCGplayer URL.
 
 A product retires when no retailer has had it in stock for `retire_after_days` (60) since first seen, or when every retailer has delisted it for `retire_missing_days` (7). Retired products stop being polled and move to a collapsed section at the bottom of the page. Remove them from `config.yaml` whenever you like.
+
+## Hot items
+
+Only hot items are worth tracking; loose packs are not. The rule is `is_hot(name)` in `tcgwatch/hotlist.py`, read from the product name in `config.yaml` (case does not matter).
+
+| Hot | Not hot |
+|---|---|
+| Booster bundle | Double packs, single packs, sleeved boosters |
+| Elite Trainer Box (ETB) | Blisters |
+| Booster box or booster display (incl. Riftbound displays) | Tins |
+| Premium collection (incl. super- and ultra-premium) | Decks (battle, starter, champion) |
+| Special collection | Anything else not listed (other collections, chests, vault bundles) |
+| Illustration box | |
+| One Piece premium card collection | |
+
+A name that is both (for example "Premium Collection Tin") is not hot: the not-hot types win.
+
+A product line in `config.yaml` may carry `hot: true` (track it although its name is not a hot type) or `hot: false` (skip it although it is). Leaving `hot` out keeps the name rule; any other value fails when the config loads. The override applies to polling, market prices and the status page alike.
+
+Two overrides in `config.yaml` (2026-10-09), both `hot: true` although the name rule says not hot:
+
+| Product lines | Override |
+|---|---|
+| Riftbound Vault Bundles (Vendetta, Unleashed; every retailer) | `hot: true` |
+| Pokemon 30th Celebration Sylveon ex Box and Greninja ex Box | `hot: true` |
+
+Walmart "Booster (bundle or box, verify)", First Partner Illustration Collection, and the Poster, Knock Out and Tech Sticker Collections stay not hot. `tests/test_real_config_hot.py` pins both lists.
+
+## Market prices only
+
+`python watch.py --market-only` runs just the TCGplayer market loop and the daily price history for the hot products: one product every `market_interval` seconds, each cached for a day. It starts no retailer polls, Reddit feeds, browser or site deploy, and sends no alerts. Use it while the full watcher is disabled, so the price history keeps growing.
+
+`powershell -ExecutionPolicy Bypass -File scripts\install-task.ps1 -MarketOnly` registers it as the windowless scheduled task "TCG Market Prices", started at logon. It leaves the "TCG Restock Watch" task as it is. Remove it with `Unregister-ScheduledTask -TaskName "TCG Market Prices" -Confirm:$false`.
+
+**Never enable both tasks at once.** They share `state.json`, and two writers overwrite each other's updates.
 
 ## Prices
 

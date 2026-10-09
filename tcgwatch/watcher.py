@@ -15,7 +15,7 @@ from . import NO_WINDOW
 from . import cart as cart_mod
 from . import feeds as feeds_mod
 from . import grouping
-from . import history
+from . import history, hotlist
 from . import market as market_mod
 from . import msrp, notify
 from .browser import Browser, BrowserError
@@ -142,11 +142,13 @@ class Watcher:
         self.state.update(res.product.key, in_stock=res.in_stock, price=res.price, **fields)
 
     def active_products(self, retailer: str) -> list:
-        """Products still worth polling: not retired."""
+        """Products still worth polling: hot (README "Hot items") and not retired."""
         from . import lifecycle
 
         out = []
         for p in self.cfg.products_for(retailer):
+            if not hotlist.is_hot(p.name, p.hot):
+                continue
             key = grouping.group_key(p.name)
             siblings = [self.state.get(q.key) for q in self.cfg.products if grouping.group_key(q.name) == key]
             if lifecycle.is_retired(siblings, self.cfg.retire_after_days, self.cfg.retire_missing_days):
@@ -166,12 +168,26 @@ class Watcher:
                 log.warning("market tick crashed: %s", e)
             time.sleep(self.cfg.market_interval * random.uniform(0.9, 1.3))
 
+    def run_market_only(self) -> None:
+        """`watch.py --market-only`: the market tick and its history append, forever, on this thread.
+
+        Reuses run_market_loop, so the pacing, the one-product-a-day cache and the history
+        append are the full watcher's own. Nothing else is started: no retailer lanes, feeds,
+        browser, alerts or site deploy.
+        """
+        hot = sum(1 for p in self.cfg.products if hotlist.is_hot(p.name, p.hot))
+        log.info("market-only: pricing %d products, one every ~%ds, no retailer polls",
+                 hot, self.cfg.market_interval)
+        self.run_market_loop()
+
     def run_market_tick(self) -> None:
         if time.time() < self.market_paused_until:
             return
         now = time.time()
         oldest_key, oldest_ts, oldest_name = None, now, ""
         for p in self.cfg.products:
+            if not hotlist.is_hot(p.name, p.hot):
+                continue
             key = grouping.group_key(p.name)
             ts = self.state.get(f"market:{key}").get("updated", 0.0)
             if ts < oldest_ts:
@@ -265,8 +281,14 @@ class Watcher:
             if price is not None:
                 body += f"\n(price in title: ${price:.2f})"
             log.info("FEED r/%s: %s", h["subreddit"], h["title"])
-            if alert:
-                self.alert(f"r/{h['subreddit']} new post", body, h["url"] or h["permalink"], "high", "newspaper")
+            if not alert:
+                continue
+            link = h["url"] or h["permalink"]
+            if h.get("raffle"):
+                title, raffle_body = notify.raffle_alert(h["raffle"])
+                self.alert(title, raffle_body, link, "urgent", "tickets")
+            else:
+                self.alert(f"r/{h['subreddit']} new post", body, link, "high", "newspaper")
         return hits
 
     # -- loop ----------------------------------------------------------------------------

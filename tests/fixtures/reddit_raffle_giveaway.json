@@ -1,0 +1,21 @@
+{
+  "_hand_built": "Hand-built in the real Reddit listing shape that tcgwatch/feeds.py _fetch_api parses; not a recorded answer.",
+  "kind": "Listing",
+  "data": {
+    "children": [
+      {
+        "kind": "t3",
+        "data": {
+          "name": "t3_giveaway01",
+          "id": "giveaway01",
+          "title": "[GIVEAWAY] I'm giving away 3 Pokemon booster packs, comment to enter",
+          "selftext": "My own giveaway for the sub. Drawing is Oct 12 at 9am PT.",
+          "created_utc": 1791558000.0,
+          "permalink": "/r/PokemonTCGDeals/comments/giveaway01/giveaway/",
+          "url": "https://www.reddit.com/r/PokemonTCGDeals/comments/giveaway01/giveaway/",
+          "is_self": true
+        }
+      }
+    ]
+  }
+}

@@ -1,6 +1,7 @@
 """tcg-restock-watch entry point.
 
   python watch.py                    run forever
+  python watch.py --market-only      only TCGplayer market prices and daily history, no retailer polls
   python watch.py --once             check everything once and print
   python watch.py --test             send a test push to your phone
   python watch.py --login            open the watcher's Chrome so you can sign in to each store
@@ -60,6 +61,7 @@ def main() -> int:
     ap.add_argument("--backfill-history", type=int, metavar="DAYS", help="backfill daily market price history from tcgcsv.com's dated archives, for the last DAYS days (only for products the market tick has already matched at least once)")
     ap.add_argument("--site", action="store_true", help="build the static status page into site/")
     ap.add_argument("--deploy", action="store_true", help="with --site: deploy site/ to Vercel (npx vercel --prod)")
+    ap.add_argument("--market-only", action="store_true", help="run only the TCGplayer market-price tick and the daily history append: no retailer polls, feeds, browser, alerts or deploy")
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args()
 
@@ -139,6 +141,16 @@ def main() -> int:
         marketplace = "marketplace" in str(info.get("seller", "")).lower() or "marketplace" in str(info.get("status", "")).lower()
         msrp_line = "0  # marketplace price shown above is NOT MSRP; set the real one" if marketplace else str(info.get("price") or 0)
         print(f"\nconfig.yaml entry:\n  - retailer: {retailer}\n    id: \"{pid}\"\n    name: \"{info.get('name')}\"\n    msrp: {msrp_line}")
+        return 0
+
+    if args.market_only:
+        if not cfg.products:
+            print("config.yaml has no products to price. Add some (see README).")
+            return 2
+        try:
+            Watcher(cfg).run_market_only()
+        except KeyboardInterrupt:
+            log.info("stopped")
         return 0
 
     if not cfg.products and not cfg.feeds:

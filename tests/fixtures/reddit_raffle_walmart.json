@@ -1,0 +1,21 @@
+{
+  "_hand_built": "Hand-built in the real Reddit listing shape that tcgwatch/feeds.py _fetch_api parses; not a recorded answer.",
+  "kind": "Listing",
+  "data": {
+    "children": [
+      {
+        "kind": "t3",
+        "data": {
+          "name": "t3_raffle01",
+          "id": "raffle01",
+          "title": "Walmart Pokemon TCG raffle: request an invite for the Prismatic ETB",
+          "selftext": "Walmart is running an invite raffle for the Elite Trainer Box. Entries open Oct 12 9am PT and close Oct 14 at 11pm PT. Winners get an email.",
+          "created_utc": 1791558000.0,
+          "permalink": "/r/PokemonTCGDeals/comments/raffle01/walmart_raffle/",
+          "url": "https://www.reddit.com/r/PokemonTCGDeals/comments/raffle01/walmart_raffle/",
+          "is_self": true
+        }
+      }
+    ]
+  }
+}

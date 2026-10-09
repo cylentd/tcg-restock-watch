@@ -1,0 +1,21 @@
+{
+  "_hand_built": "Hand-built in the real Reddit listing shape that tcgwatch/feeds.py _fetch_api parses; not a recorded answer.",
+  "kind": "Listing",
+  "data": {
+    "children": [
+      {
+        "kind": "t3",
+        "data": {
+          "name": "t3_restock01",
+          "id": "restock01",
+          "title": "Walmart: Pokemon Elite Trainer Box back in stock $49.99",
+          "selftext": "Shipped and sold by Walmart. No sign up needed, add to cart now.",
+          "created_utc": 1791558000.0,
+          "permalink": "/r/PokemonTCGDeals/comments/restock01/walmart_etb/",
+          "url": "https://www.walmart.com/ip/1234567890",
+          "is_self": false
+        }
+      }
+    ]
+  }
+}

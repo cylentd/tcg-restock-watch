@@ -9,7 +9,8 @@ The page is assembled from files, one kind per file (all under tcgwatch/template
 structure page.html, style page.css, behaviour page.js, copy copy.json (keyed;
 `{{key}}` in html/js), data shops.json. Two extension points let a feature add
 files instead of editing this module:
-  * templates/sections/<name>.html|css|js  a page section, its style, its script;
+  * templates/sections/<name>.html|css|js  a page section, its style, its script; the html opens
+    with `<!-- place: top -->` to sit under the header, else it follows the local shops;
   * site_data/<name>.py  `provide(cfg, state, groups) -> dict`, merged into the page data.
 """
 
@@ -22,7 +23,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from . import ev, feeds, grouping, history, images, lifecycle, site_data
+from . import copy_text, ev, feeds, grouping, history, hotlist, images, lifecycle, site_data, trends
 from .config import Config
 from .retailers import product_url
 from .state import State
@@ -45,6 +46,8 @@ SHOP_CARD = ('<a class="lgs-card" href="{url}" target="_blank" rel="noopener">'
              '<span class="lgs-name">{name}</span><span class="lgs-city">{city}</span></a>')
 SHOP_JOIN = "\n    "  # the cards sit in page.html at the grid's indent
 PLACEHOLDER = re.compile(r"\{\{(\w+)\}\}")
+PLACE_MARKER = re.compile(r"\A<!-- place: (\w+) -->\n?")
+SECTION_PLACES = ("top",)  # a section with no marker follows the local shops; "top" sits under the header
 
 
 def _status(entry: dict) -> str:
@@ -62,6 +65,8 @@ def _group_listings(cfg: Config, state: State) -> tuple[dict[str, dict], float]:
     groups: dict[str, dict] = {}
     last_poll = 0.0
     for p in cfg.products:
+        if not hotlist.is_hot(p.name, p.hot):
+            continue  # README "Hot items": only hot products are shown
         key = grouping.group_key(p.name)
         g = groups.setdefault(
             key,
@@ -200,26 +205,51 @@ def _shop_cards(shops: list[dict]) -> str:
 
 def _section_parts(directory: Path) -> dict[str, list[str]]:
     """Every section's html, css and js, in name order. A section may have any of the three."""
-    parts: dict[str, list[str]] = {"html": [], "css": [], "js": []}
+    parts: dict[str, list[str]] = {"html": [], "top": [], "css": [], "js": []}
     names = sorted({p.stem for p in directory.glob("*") if p.suffix in (".html", ".css", ".js")}) if directory.is_dir() else []
     for name in names:
-        for kind in parts:
+        for kind in ("html", "css", "js"):
             f = directory / f"{name}.{kind}"
-            if f.is_file():
-                parts[kind].append(_read(f))
+            if not f.is_file():
+                continue
+            text = _read(f)
+            if kind == "html":
+                place, text = _split_place(f.name, text)
+                kind = place or "html"
+            parts[kind].append(text)
     return parts
+
+
+def _split_place(filename: str, text: str) -> tuple[str | None, str]:
+    """A section's html may open with `<!-- place: top -->`; returns (place, html without the marker)."""
+    m = PLACE_MARKER.match(text)
+    if not m:
+        return None, text
+    if m.group(1) not in SECTION_PLACES:
+        raise ValueError(f"{filename}: unknown place {m.group(1)!r} (known: {', '.join(SECTION_PLACES)})")
+    return m.group(1), text[m.end():]
 
 
 def _with_newline(text: str) -> str:
     return text if text.endswith("\n") else text + "\n"
 
 
+def copy_context() -> dict[str, str]:
+    """Every copy key, with the numbers the rules own filled in.
+
+    `{{window_days}}` in a copy value is the trends window (trends.WINDOW_DAYS), so the wording never
+    repeats a number that lives in code. It is also a key of its own for the page templates.
+    """
+    derived = {"window_days": str(trends.WINDOW_DAYS)}
+    return {**{key: _fill(text, derived) for key, text in copy_text.load().items()}, **derived}
+
+
 def render(data: dict) -> str:
     """The page for this data: page.html with style, script, copy, shops and sections filled in."""
-    copy = json.loads(_read(TEMPLATES / "copy.json"))
     sections = _section_parts(SECTIONS)
-    ctx = {**copy, "shops": _shop_cards(json.loads(_read(TEMPLATES / "shops.json")))}
-    ctx["sections_html"] = _fill("".join("\n" + h.rstrip("\n") for h in sections["html"]), ctx)
+    ctx = {**copy_context(), "shops": _shop_cards(json.loads(_read(TEMPLATES / "shops.json")))}
+    for key in ("html", "top"):
+        ctx[f"sections_{key}"] = _fill("".join("\n" + h.rstrip("\n") for h in sections[key]), ctx)
     style = _fill("".join(_with_newline(c) for c in [_read(TEMPLATES / "page.css"), *sections["css"]]), ctx)
     script = _fill("".join(_with_newline(j) for j in [_read(TEMPLATES / "page.js"), *sections["js"]]), ctx)
     page = _fill(_read(TEMPLATES / "page.html"), ctx)

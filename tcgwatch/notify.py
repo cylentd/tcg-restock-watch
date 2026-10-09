@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import logging
+import re
+from datetime import datetime
 
 import requests
+
+from . import copy_text, raffles
 
 log = logging.getLogger("tcgwatch.notify")
 
@@ -56,6 +60,29 @@ def ntfy(
     except requests.RequestException as e:
         log.warning("ntfy push failed: %s", e)
         return False
+
+
+# The wording is in templates/copy.json (raffle_title, raffle_body, raffle_body_no_close).
+RAFFLE_TIME_FORMAT = "%a %b %d %H:%M"  # the zone label (PST or PDT) follows
+# A leading "[Walmart]" style tag on a post title repeats the retailer already named in the alert.
+LEADING_TAG_RE = re.compile(r"^\s*\[[^\]]*\]\s*")
+
+
+def _when(iso: str) -> str:
+    """An ISO instant as US Pacific wall-clock time, e.g. 'Sat Jan 16 06:00 PST'."""
+    local, label = raffles.pacific(datetime.fromisoformat(iso))
+    return f"{local.strftime(RAFFLE_TIME_FORMAT)} {label}"
+
+
+def raffle_alert(record: dict) -> tuple[str, str]:
+    """(title, body) for a stored raffle record: the retailer and product, then the entry window (copy.json)."""
+    copy = copy_text.load()
+    product = LEADING_TAG_RE.sub("", record["title"])
+    title = copy["raffle_title"].format(retailer=record["retailer"], product=product)
+    opens = _when(record["opens"])
+    if record.get("closes"):
+        return title, copy["raffle_body"].format(opens=opens, closes=_when(record["closes"]))
+    return title, copy["raffle_body_no_close"].format(opens=opens)
 
 
 def push(cfg, title: str, body: str, url: str | None = None, priority: str = "high",

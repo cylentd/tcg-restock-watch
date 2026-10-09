@@ -49,6 +49,44 @@ def test_a_section_html_file_sits_between_the_local_shops_and_the_filter_bar(sec
     assert '</section>\n<section id="journeys">J</section>' + BAR_START in page
 
 
+def test_a_section_marked_place_top_sits_between_the_header_and_the_hot_reel(sections):
+    (sections / "journeys.html").write_text('<!-- place: top -->\n<section id="journeys">J</section>\n', encoding="utf-8")
+
+    page = site_mod.render({})
+
+    assert '</header>\n<section id="journeys">J</section>\n\n<section class="reel-wrap"' in page
+
+
+def test_a_section_marked_place_top_is_not_also_placed_after_the_local_shops(sections):
+    (sections / "journeys.html").write_text('<!-- place: top -->\n<section id="journeys">J</section>\n', encoding="utf-8")
+
+    page = site_mod.render({})
+
+    assert page.count('id="journeys"') == 1
+    assert BAR_START in page, "the filter bar still follows the local shops directly"
+
+
+def test_the_place_marker_is_not_written_into_the_page(sections):
+    (sections / "journeys.html").write_text('<!-- place: top -->\n<p>J</p>', encoding="utf-8")
+
+    page = site_mod.render({})
+
+    assert "place: top" not in page
+
+
+def test_an_unknown_place_fails_the_build_and_names_it(sections):
+    (sections / "journeys.html").write_text("<!-- place: sideways -->\n<p>J</p>", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="journeys.html.*sideways"):
+        site_mod.render({})
+
+
+def test_the_trends_section_is_placed_at_the_top_of_the_real_page():
+    page = site_mod.render({})
+
+    assert page.index('id="trWrap"') < page.index('id="reelWrap"')
+
+
 def test_a_section_css_file_is_the_last_thing_in_the_stylesheet(sections):
     (sections / "journeys.css").write_text("#journeys { color:red; }", encoding="utf-8")
 

@@ -146,8 +146,8 @@ products:
   - {retailer: target, id: "95120834", name: "Pokemon Mega Evolution Ascended Heroes Booster Bundle", msrp: 31.99}
   - {retailer: target, id: "88275197", name: "Pokemon Scarlet & Violet Booster Bundle", msrp: 26.99}
   - {retailer: target, id: "1010892076", name: "Pokemon 30th Celebration Elite Trainer Box", msrp: 69.99}
-  - {retailer: target, id: "1010892068", name: "Pokemon 30th Celebration Sylveon ex Box", msrp: 29.99}
-  - {retailer: target, id: "1010892065", name: "Pokemon 30th Celebration Greninja ex Box", msrp: 29.99}
+  - {retailer: target, id: "1010892068", name: "Pokemon 30th Celebration Sylveon ex Box", msrp: 29.99, hot: true}
+  - {retailer: target, id: "1010892065", name: "Pokemon 30th Celebration Greninja ex Box", msrp: 29.99, hot: true}
   - {retailer: target, id: "1010892069", name: "Pokemon 30th Celebration Tin", msrp: 29.99}
   - {retailer: target, id: "1010892067", name: "Pokemon 30th Celebration Poster Collection", msrp: 19.99}
   - {retailer: target, id: "1010892070", name: "Pokemon 30th Celebration Knock Out Collection", msrp: 11.99}
@@ -266,12 +266,12 @@ products:
   - {retailer: walmart, id: "18864622941", name: "Riftbound Unleashed Booster Display", msrp: 120}
   - {retailer: target, id: "1008679265", name: "Riftbound Spiritforged Booster Display", msrp: 120}
   - {retailer: walmart, id: "16140502021", name: "Riftbound Origins Booster Display", msrp: 120}
-  - {retailer: target, id: "1011726395", name: "Riftbound Vendetta Vault Bundle"}
-  - {retailer: gamestop, id: "20035471", name: "Riftbound Vendetta Vault Bundle"}
-  - {retailer: target, id: "1009864484", name: "Riftbound Unleashed Vault Bundle"}
-  - {retailer: bestbuy, id: "12660800", name: "Riftbound Unleashed Vault Bundle"}
-  - {retailer: walmart, id: "19686652780", name: "Riftbound Unleashed Vault Bundle"}
-  - {retailer: gamestop, id: "20035427", name: "Riftbound Unleashed Vault Bundle"}
+  - {retailer: target, id: "1011726395", name: "Riftbound Vendetta Vault Bundle", hot: true}
+  - {retailer: gamestop, id: "20035471", name: "Riftbound Vendetta Vault Bundle", hot: true}
+  - {retailer: target, id: "1009864484", name: "Riftbound Unleashed Vault Bundle", hot: true}
+  - {retailer: bestbuy, id: "12660800", name: "Riftbound Unleashed Vault Bundle", hot: true}
+  - {retailer: walmart, id: "19686652780", name: "Riftbound Unleashed Vault Bundle", hot: true}
+  - {retailer: gamestop, id: "20035427", name: "Riftbound Unleashed Vault Bundle", hot: true}
   - {retailer: gamestop, id: "20035470", name: "Riftbound Vendetta Zed vs Shen Champion Deck Showdown", msrp: 39.98}
   - {retailer: target, id: "95275676", name: "Riftbound Unleashed Champion Deck Vi", msrp: 19.99, tcgplayer: 678157}
   - {retailer: bestbuy, id: "12660799", name: "Riftbound Unleashed Champion Deck Vi", msrp: 19.99}

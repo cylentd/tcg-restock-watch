@@ -1,4 +1,34 @@
 const D = JSON.parse(document.getElementById('data').textContent);
+// Tuning numbers, named 2026-10-09 with their values unchanged. Unless a line says otherwise they
+// came over from the single-file site.py template, tuned by eye with David on 2026-09-07.
+const FULL_TURN = 360;             // degrees in a circle
+const SWIRL_ARMS = 5;              // Riftbound's swirl glyph: five arms, 72 degrees apart
+const SECONDS_PER_MINUTE = 60;
+const SECONDS_PER_HOUR = 3600;
+const SECONDS_PER_DAY = 86400;
+const AGO_SECONDS_UNDER = 90;      // "45s" until 90 s, then minutes
+const AGO_MINUTES_UNDER = 5400;    // minutes until 90 min, then hours
+const AGO_HOURS_UNDER = 172800;    // hours until 48 h, then days
+const AT_MSRP_MAX = 1.15;          // market up to 1.15x MSRP still reads "at MSRP"
+const MARKET_EVEN_BAND = 0.03;     // a listing within 3% of market is "about market"
+const REEL_MAX = 10;               // hot reel shows the 10 hottest products
+const REEL_MIN = 3;                // fewer than 3 is not worth a moving strip
+const REEL_VEL_STOP = 0.05;        // px/frame below which a fling has stopped
+const REEL_FRICTION = 0.955;       // fling velocity kept per frame
+const REEL_IDLE_MS = 700;          // pause after a drag before the drift resumes
+const REEL_DRIFT = 0.4;            // idle drift, px/frame
+const REEL_DRIFT_HOVER = 0.16;     // slower drift under the mouse
+const REEL_VEL_MAX = 150;          // fling speed cap, px/frame
+const TAP_SLOP_PX = 6;             // a pointer that moved this far or less was a tap, not a drag
+const SPARK_W = 100;               // sparkline viewBox; it stretches to its box
+const SPARK_H = 28;
+const TOAST_SHOW_MS = 1400;
+const TOAST_FADE_MS = 250;         // matches the .toast opacity transition in page.css
+const CAL_SOON_DAYS = 7;           // "soon" colour on the release calendar
+const CAL_NEAR_DAYS = 30;          // "near" colour
+const CAL_DAYS_MAX = 60;           // "in N days" up to 60, then "in N weeks"
+const WHEEL_DONE_PX = 0.5;         // wheel ease stops this close to its target
+const WHEEL_EASE = 0.18;           // share of the remaining distance covered per frame (David, 2026-09-07)
 const RET = {target:{l:'Target',c:'var(--target)'}, bestbuy:{l:'Best Buy',c:'var(--bestbuy)'}, walmart:{l:'Walmart',c:'var(--walmart)'}, gamestop:{l:'GameStop',c:'var(--gamestop)'}};
 const ST = {
   in:{l:'{{st_in}}', i:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg>'},
@@ -11,7 +41,7 @@ const PLACEHOLDER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 const GAME = {
   'Pokemon':   {c:'#ffcf4a', i:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 1 9.8 8.2h-6.1a3.8 3.8 0 0 0-7.4 0H2.2A10 10 0 0 1 12 2z"/><path d="M2.2 13.8h6.1a3.8 3.8 0 0 0 7.4 0h6.1A10 10 0 0 1 2.2 13.8z"/><circle cx="12" cy="12" r="2"/></svg>'},
   'One Piece': {c:'#3ddbc4', i:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.4"/><path d="M12 7.4V21M5 13a7 7 0 0 0 14 0M8.5 13H5M19 13h-3.5"/></svg>'},
-  'Riftbound': {c:'#ff8a1f', i:'<svg viewBox="0 0 24 24" fill="currentColor">' + [0, 72, 144, 216, 288].map(a => `<path d="M11 12C10 5 16 1 23 4 17 4.5 15 8 15 12 15 14 12 14.5 11 12z" transform="rotate(${a} 12 12)"/>`).join('') + '</svg>'},
+  'Riftbound': {c:'#ff8a1f', i:'<svg viewBox="0 0 24 24" fill="currentColor">' + Array.from({length: SWIRL_ARMS}, (_, k) => k * FULL_TURN / SWIRL_ARMS).map(a => `<path d="M11 12C10 5 16 1 23 4 17 4.5 15 8 15 12 15 14 12 14.5 11 12z" transform="rotate(${a} 12 12)"/>`).join('') + '</svg>'},
 };
 const gameTag = name => { const g = GAME[name]; return `<span class="tag" style="--gc:${g ? g.c : 'currentColor'}">${g ? g.i : ''}${name}</span>`; };
 // Icon-only glyph (no text chip) for tight spaces; title carries the game name for a11y/hover.
@@ -20,7 +50,7 @@ const F = {q:'', game:'', kind:'', ret:new Set(Object.keys(RET)), status:'', sor
 const FLAME = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1 4 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z"/></svg>';
 const $ = s => document.querySelector(s);
 const money = v => v == null ? null : '$' + Number(v).toFixed(2);
-const ago = ts => { if(!ts) return ''; const d = Math.max(0, Math.round(D.generated - ts)); return d<90? d+'s' : d<5400? Math.round(d/60)+'m' : d<172800? Math.round(d/3600)+'h' : Math.round(d/86400)+'d'; };
+const ago = ts => { if(!ts) return ''; const d = Math.max(0, Math.round(D.generated - ts)); return d<AGO_SECONDS_UNDER? d+'s' : d<AGO_MINUTES_UNDER? Math.round(d/SECONDS_PER_MINUTE)+'m' : d<AGO_HOURS_UNDER? Math.round(d/SECONDS_PER_HOUR)+'h' : Math.round(d/SECONDS_PER_DAY)+'d'; };
 
 function stats(){
   const listings = D.groups.reduce((n,g)=>n+g.listings.length,0);
@@ -38,7 +68,7 @@ function stats(){
 // Single source of truth for the premium verdict; the meter headline is the only place it renders.
 // Color still grades severity (green/amber/red); the word doesn't need to try too — "2.5x
 // scalped" said the same thing twice, awkwardly (David, 2026-09-07).
-const premiumVerdict = p => p == null ? null : p <= 1.15 ? {cls:'ok', t:'{{verdict_at}}'} : {cls: p <= 2 ? 'hi' : 'wild', t:'{{verdict_over}}'};
+const premiumVerdict = p => p == null ? null : p <= AT_MSRP_MAX ? {cls:'ok', t:'{{verdict_at}}'} : {cls: p <= 2 ? 'hi' : 'wild', t:'{{verdict_over}}'};
 // The ratio + verdict word alone: the signal ("3.0x scalped"). Used on the row, where the actual
 // MSRP/Market breakdown is a click away, not a second thing to scan past for every product.
 function meterHead(g){
@@ -64,7 +94,7 @@ function meter(g, showHead){
 function dealBadge(l, m){
   if (l.status !== 'in' || !l.price || !m || !m.price) return '';
   const diff = l.price - m.price;
-  if (Math.abs(diff) / m.price < 0.03) return `<span class="deal even">{{deal_even}}</span>`;
+  if (Math.abs(diff) / m.price < MARKET_EVEN_BAND) return `<span class="deal even">{{deal_even}}</span>`;
   return diff < 0 ? `<span class="deal buy">{{deal_buy_pre}}${money(-diff)}{{deal_buy_post}}</span>` : `<span class="deal pass">{{deal_pass_pre}}${money(diff)}{{deal_pass_post}}</span>`;
 }
 
@@ -135,8 +165,8 @@ $('#q').oninput = e => { F.q = e.target.value; apply(); };
 $('#sort').onchange = e => { F.sort = e.target.value; apply(); };
 // Hot reel: top products by hot score, doubled into one looping track.
 (function reel(){
-  const hot = D.groups.filter(g => !g.retired && (g.img || g.premium)).sort((a,b)=>b.hot-a.hot).slice(0,10);
-  if (hot.length < 3) return;
+  const hot = D.groups.filter(g => !g.retired && (g.img || g.premium)).sort((a,b)=>b.hot-a.hot).slice(0,REEL_MAX);
+  if (hot.length < REEL_MIN) return;
   const wrap = $('#reelWrap'), reelEl = $('#reel'), track = $('#track');
   wrap.hidden = false;
   const tile = g => `<a class="tile${g.in_stock ? ' in' : ''}" href="#${encodeURIComponent(g.key)}" data-key="${g.key}"><div class="art">${g.img? `<img src="${g.img}" alt="" loading="lazy" decoding="async">` : PLACEHOLDER}</div><div class="t">${g.name}</div><div class="x">${g.in_stock? '<span class="in">{{tile_in_stock}}</span>' : ''}${g.premium? `<b>${g.premium.toFixed(1)}×</b>`:''}</div></a>`;
@@ -148,8 +178,8 @@ $('#sort').onchange = e => { F.sort = e.target.value; apply(); };
   function frame(){
     const now = performance.now();
     if (drag) { /* position follows pointer */ }
-    else if (Math.abs(vel) > 0.05) { pos += vel; vel *= 0.955; }
-    else if (!reduced && now - idleAt > 700) { pos += hover ? 0.16 : 0.4; }
+    else if (Math.abs(vel) > REEL_VEL_STOP) { pos += vel; vel *= REEL_FRICTION; }
+    else if (!reduced && now - idleAt > REEL_IDLE_MS) { pos += hover ? REEL_DRIFT_HOVER : REEL_DRIFT; }
     if (setW > 0) { pos = ((pos % setW) + setW) % setW; }
     track.style.transform = `translateX(${-pos}px)`;
     requestAnimationFrame(frame);
@@ -159,9 +189,9 @@ $('#sort').onchange = e => { F.sort = e.target.value; apply(); };
   // setPointerCapture retargets the follow-up click to the reel itself, so a click listener on the
   // track never fires. Decide tap-vs-drag on pointerup instead and open the sheet from there.
   reelEl.addEventListener('pointerdown', e => { tapTile = e.target.closest('.tile'); drag = {x:e.clientX, pos, last:e.clientX, t:performance.now()}; moved = 0; vel = 0; reelEl.classList.add('drag'); reelEl.setPointerCapture(e.pointerId); });
-  reelEl.addEventListener('pointermove', e => { if(!drag) return; const dx = e.clientX - drag.x; moved = Math.max(moved, Math.abs(dx)); pos = drag.pos - dx; const now = performance.now(); vel = -(e.clientX - drag.last) * 2; vel = Math.max(-150, Math.min(150, vel)); drag.last = e.clientX; drag.t = now; });
+  reelEl.addEventListener('pointermove', e => { if(!drag) return; const dx = e.clientX - drag.x; moved = Math.max(moved, Math.abs(dx)); pos = drag.pos - dx; const now = performance.now(); vel = -(e.clientX - drag.last) * 2; vel = Math.max(-REEL_VEL_MAX, Math.min(REEL_VEL_MAX, vel)); drag.last = e.clientX; drag.t = now; });
   const end = e => { if(!drag) return; drag = null; idleAt = performance.now(); reelEl.classList.remove('drag');
-    if (e.type === 'pointerup' && moved <= 6 && tapTile) { vel = 0; openKey(tapTile.dataset.key); } tapTile = null; };
+    if (e.type === 'pointerup' && moved <= TAP_SLOP_PX && tapTile) { vel = 0; openKey(tapTile.dataset.key); } tapTile = null; };
   reelEl.addEventListener('pointerup', end); reelEl.addEventListener('pointercancel', end);
   reelEl.addEventListener('click', e => { if (e.target.closest('.tile')) e.preventDefault(); });
 })();
@@ -187,8 +217,8 @@ function bestDeal(g){
   const best = inStock.reduce((a, b) => a.price < b.price ? a : b);
   const r = RET[best.retailer] || {l: best.retailer};
   const diff = best.price - m.price;
-  if (diff <= -m.price * 0.03) return { cls:'buy', text: `{{best_buy}}` };
-  if (diff >= m.price * 0.03) return { cls:'pass', text: `{{best_pass}}` };
+  if (diff <= -m.price * MARKET_EVEN_BAND) return { cls:'buy', text: `{{best_buy}}` };
+  if (diff >= m.price * MARKET_EVEN_BAND) return { cls:'pass', text: `{{best_pass}}` };
   return { cls:'even', text: `{{best_even}}` };
 }
 // EV per set link-out was dropped 2026-09-07: no existing EV calculator site was found to link
@@ -214,7 +244,7 @@ function evBlock(g){
 function sparkSvg(pts){
   if (!pts || pts.length < 2) return '';
   const min = Math.min(...pts), max = Math.max(...pts), span = (max - min) || 1;
-  const w = 100, h = 28;
+  const w = SPARK_W, h = SPARK_H;
   const step = w / (pts.length - 1);
   const coords = pts.map((p, i) => `${(i * step).toFixed(1)},${(h - (p - min) / span * h).toFixed(1)}`).join(' ');
   const up = pts[pts.length - 1] >= pts[0];
@@ -268,7 +298,7 @@ function showToast(msg){
   const t = $('#toast'); t.textContent = msg; t.hidden = false;
   requestAnimationFrame(() => t.classList.add('show'));
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { t.classList.remove('show'); setTimeout(() => { t.hidden = true; }, 250); }, 1400);
+  toastTimer = setTimeout(() => { t.classList.remove('show'); setTimeout(() => { t.hidden = true; }, TOAST_FADE_MS); }, TOAST_SHOW_MS);
 }
 ['#list', '#retiredList'].forEach(s => $(s).addEventListener('click', e => {
   if (e.target.closest('a')) return;
@@ -303,8 +333,8 @@ function drawCal(){
   $('#calWrap').hidden = false;
   $('#calWrap').classList.toggle('collapsed', calCollapsed());
   const R = ALL_RELEASES.filter(r => !F.game || r.game === F.game);
-  const item = r => { const d = r.days, cls = d < 0 ? 'now' : d <= 7 ? 'soon' : d <= 30 ? 'near' : '';
-    const when = d < 0 ? '{{cal_out_now}}' : d === 0 ? '{{cal_today}}' : d === 1 ? '{{cal_tomorrow}}' : d <= 60 ? `{{cal_in_days}}` : `{{cal_in_weeks}}`;
+  const item = r => { const d = r.days, cls = d < 0 ? 'now' : d <= CAL_SOON_DAYS ? 'soon' : d <= CAL_NEAR_DAYS ? 'near' : '';
+    const when = d < 0 ? '{{cal_out_now}}' : d === 0 ? '{{cal_today}}' : d === 1 ? '{{cal_tomorrow}}' : d <= CAL_DAYS_MAX ? `{{cal_in_days}}` : `{{cal_in_weeks}}`;
     const tag = r.source ? 'a' : 'div', href = r.source ? ` href="${r.source}" target="_blank" rel="noopener"` : '';
     const g = GAME[r.game] || {c:'currentColor', i:''};
     return `<${tag} class="rel ${cls}" style="--gc:${g.c}"${href} title="${r.game} — ${(r.note || '').replace(/"/g, '&quot;')}"><div class="rel-top"><div><div class="date-mon">${r.mon}</div><div class="date-day">${r.day}</div></div><div class="rel-icon">${g.i}</div></div><div class="rel-n">${r.name}</div><div class="rel-when">${when}</div></${tag}>`; };
@@ -326,8 +356,8 @@ $('#calToggle').onclick = () => setCalCollapsed(!$('#calWrap').classList.contain
   (function easeWheel(){
     if (wheelTarget !== null) {
       const d = wheelTarget - cal.scrollLeft;
-      if (Math.abs(d) < 0.5) { cal.scrollLeft = wheelTarget; wheelTarget = null; cal.classList.remove('drag'); }
-      else cal.scrollLeft += d * 0.18;
+      if (Math.abs(d) < WHEEL_DONE_PX) { cal.scrollLeft = wheelTarget; wheelTarget = null; cal.classList.remove('drag'); }
+      else cal.scrollLeft += d * WHEEL_EASE;
     }
     requestAnimationFrame(easeWheel);
   })();
@@ -349,7 +379,7 @@ $('#calToggle').onclick = () => setCalCollapsed(!$('#calWrap').classList.contain
   const end = () => { if (!drag) return; drag = null; cal.classList.remove('drag'); };
   cal.addEventListener('pointerup', end); cal.addEventListener('pointercancel', end);
   cal.addEventListener('click', e => {
-    const card = tapCard, dragged = moved > 6; tapCard = null; moved = 0;
+    const card = tapCard, dragged = moved > TAP_SLOP_PX; tapCard = null; moved = 0;
     if (dragged) { e.preventDefault(); e.stopPropagation(); return; }
     if (card && card.tagName === 'A' && !card.contains(e.target)) { e.preventDefault(); window.open(card.href, '_blank', 'noopener'); }
   }, true);
