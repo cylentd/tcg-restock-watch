@@ -8,6 +8,14 @@ A restock poller that runs all day as the scheduled task "TCG Restock Watch" and
 - Before any real-browser or live-host test: `Stop-ScheduledTask "TCG Restock Watch"`; after: `Start-ScheduledTask "TCG Restock Watch"`.
 - `agent-browser --session tcg close --all` stops the watcher's daemon and every other agent-browser session too.
 
+## Browser notes (carried from memory, 2026-10-28)
+
+- A Best Buy page holds a ~4.6 GB Chrome renderer that only a tab close releases (an about:blank reset does not), so `bestbuy.py` opens a fresh tab per product (2026-09-21). Keep it that way.
+- Before adding a method to the `Browser` class, grep `def <name>`: a stray two-line `close()` once sat late in the file and silently overrode a new one.
+- Memory caps read private bytes, not RSS (Windows trims RSS, so RSS caps never fire). Chrome recycles every 2,000 commands; the shared daemon is killed only over 1,500 MB (84091c3, 2026-10-09).
+- A Target press-and-hold challenge in the parked window clears by itself in 1-10 min (13 spans on 2026-09-18/19, none needed a human).
+- Pokemon Center: Imperva blocks automated Chrome, so Reddit feeds cover its drops. TCGplayer soft-blocks at ~12 requests in 2 min.
+
 ## Git
 
 Default branch is `master`. Worktree per feature from `origin/master`; finish with `git land master` (a bare `git land` fails: it looks for a remote ref `main`). The conductor lands code without asking, within the conductor skill's hard limits (David, 2026-10-09).
