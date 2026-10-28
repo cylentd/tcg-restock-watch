@@ -18,6 +18,9 @@ Ranked. The conductor picks from the top; `(conductor)` and `(suggested)` mark i
 - **Verify the 6 shipping numbers** in `config.yaml` (flagged unverified 2026-09-08) against each retailer. Needs live pages, poller stopped.
 - **GameNerdz** booster box prices (deferred 2026-09-07, never probed).
 
+- **Chrome MV3 extension poller** (David's 2026-09-08 direction, in `VISION.md` journey 2 notes). Runs in his everyday Chrome instead of CDP automation, to get past Imperva and Datadome fingerprinting (Pokemon Center). Status unknown: no code started as far as the notes show.
+- **Best Buy API key** (status unknown, noted 2026-09-21): David has none; the browser path is the real one. The key path already exists in `bestbuy.py`.
+
 ## Parked
 
 - **tcgcsv.com as the price source** for market.py/singles.py. Parked 2026-09-08 after three WAF blocks in one day. Revisit only with a real headless browser that can pass a JS challenge.

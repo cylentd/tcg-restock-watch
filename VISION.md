@@ -29,6 +29,12 @@ Where tcg-restock-watch is going. Conductors read this before sizing work here a
 - 2026-10-09: run the TCGplayer market tick on its own while the restock watcher stays off (David, 4a).
 - 2026-10-09: trend sparklines fit their own range with a start-value line, over a shorter time window or a smaller chart (David, 1a, after "the graph seems pretty flat"). The shelf-check card keeps one fixed size, and the picker shows product pictures.
 
+## Journey 2 notes: auto-buy research
+
+- Meta Muse (agentic shopping, launched 2026-09-08, US; verified 2026-10-09 from search summaries, not primary posts) does not help. It buys in its own cloud browser with a single-use Stripe Link card or Shop Pay/PayPal, and the user approves the total in chat. Merchant consent gates it (Amazon blocked it). It has no restock-drop, queue or captcha handling, and no confirmed Target, Best Buy or GameStop support.
+- Walmart is in the OpenAI/Stripe Agentic Commerce Protocol; not tested.
+- 2026-09-08 direction (supersedes "do not evade Imperva or PerimeterX"): a Chrome MV3 extension in David's everyday Chrome, not CDP automation. CDP attachment is what Imperva and Datadome fingerprint, and is why `pokemoncenter.py` returns "blocked". David works in test automation and chose a proprietary in-browser poller over a paid restock service.
+
 ## Not doing
 
 - Full auto-checkout: the bot adds to cart, a human clicks Buy (2026-10-09).
